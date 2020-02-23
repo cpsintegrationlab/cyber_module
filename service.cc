@@ -15,9 +15,9 @@
  *****************************************************************************/
 
 #include "cyber/cyber.h"
-#include "cyber/examples/proto/examples.pb.h"
+#include "modules/safety_layer/proto/examples.pb.h"
 
-using apollo::cyber::examples::proto::Driver;
+using apollo::modules::safety_layer::proto::Driver;
 
 int main(int argc, char* argv[]) {
   apollo::cyber::Init(argv[0]);

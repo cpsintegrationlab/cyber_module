@@ -19,7 +19,7 @@ cc_library(
     ],
     deps = [
         "//cyber",
-        "//cyber/examples/proto:examples_cc_proto",
+        "//modules/safety_layer/proto:examples_cc_proto",
     ],
 )
 

@@ -17,11 +17,11 @@
 
 #include "cyber/class_loader/class_loader.h"
 #include "cyber/component/component.h"
-#include "cyber/examples/proto/examples.pb.h"
+#include "modules/safety_layer/proto/examples.pb.h"
 
 using apollo::cyber::Component;
 using apollo::cyber::ComponentBase;
-using apollo::cyber::examples::proto::Driver;
+using apollo::modules::safety_layer::proto::Driver;
 
 class CommonComponentSample : public Component<Driver, Driver> {
  public:
