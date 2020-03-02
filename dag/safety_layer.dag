@@ -1,0 +1,10 @@
+module_config {
+    module_library : "/apollo/bazel-bin/modules/safety_layer/libsafety_layer_component.so"
+    timer_components {
+        class_name : "SafetyLayerComponent"
+        config {
+            name : "safety_layer"
+            interval : 10
+        }
+    }
+}

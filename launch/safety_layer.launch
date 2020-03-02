@@ -1,0 +1,7 @@
+<cyber>
+	<module>
+	    <name>safety_layer</name>
+	    <dag_conf>/apollo/modules/safety_layer/dag/safety_layer.dag</dag_conf>
+	    <process_name>safety_layer</process_name>
+	</module>
+</cyber>

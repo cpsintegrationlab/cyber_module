@@ -3,47 +3,24 @@ load("//tools:cpplint.bzl", "cpplint")
 package(default_visibility = ["//visibility:public"])
 
 cc_binary(
-    name = "talker",
-    srcs = ["talker.cc"],
-    deps = [
-        "//cyber",
-        "//modules/safety_layer/proto:examples_cc_proto",
-    ],
+    name = "libsafety_layer_component.so",
+    linkshared = True,
+    linkstatic = False,
+    deps = [":safety_layer_component_lib"],
 )
 
-cc_binary(
-    name = "listener",
-    srcs = ["listener.cc"],
-    deps = [
-        "//cyber",
-        "//modules/safety_layer/proto:examples_cc_proto",
+cc_library(
+    name = "safety_layer_component_lib",
+    srcs = [
+        "safety_layer_component.cc",
     ],
-)
-
-cc_binary(
-    name = "paramserver",
-    srcs = ["paramserver.cc"],
-    deps = [
-        "//cyber",
-        "//cyber/parameter",
+    hdrs = [
+        "safety_layer_component.h",
     ],
-)
-
-cc_binary(
-    name = "service",
-    srcs = ["service.cc"],
     deps = [
         "//cyber",
-        "//modules/safety_layer/proto:examples_cc_proto",
-    ],
-)
-
-cc_binary(
-    name = "record",
-    srcs = ["record.cc"],
-    deps = [
-        "//cyber",
-        "//cyber/proto:record_cc_proto",
+        "//modules/drivers/proto:sensor_proto",
+        "//modules/perception/camera/common:camera_frame",
     ],
 )
 
