@@ -55,7 +55,10 @@ private:
 	int image_width_;
   	int image_height_;
 	int gpu_id_;
+
 	bool enable_undistortion_;
+	bool show_depth_image_;
+	bool log_depth_image_;
 
 	std::string depth_camera_name_;
 };

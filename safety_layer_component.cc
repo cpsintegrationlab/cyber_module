@@ -25,7 +25,7 @@ namespace safety_layer
 {
 SafetyLayerComponent::SafetyLayerComponent() : depth_image_reader_(nullptr),
 	image_width_(1920), image_height_(1080), gpu_id_(0), enable_undistortion_(false),
-	depth_camera_name_("depth_camera")
+	show_depth_image_(false), log_depth_image_(false), depth_camera_name_("depth_camera")
 {
 	if (InitCameraFrame() != cyber::SUCC)
 	{
@@ -101,23 +101,35 @@ SafetyLayerComponent::OnDepthImageMessage(const
 		return;
 	}
 
-	cv::Mat depth_image(image_height_, image_width_, CV_8UC3, cv::Scalar(0, 0, 0));
-	perception::base::Image8U depth_image_8u(image_height_, image_width_, perception::base::Color::RGB);
-	perception::camera::DataProvider::ImageOptions depth_image_options;
-
 	AERROR << "Received depth image message.";
+
+	cv::Mat depth_image(image_height_, image_width_, CV_8UC1, cv::Scalar(0));
+	perception::base::Image8U depth_image_8u(image_height_, image_width_, perception::base::Color::GRAY);
+	perception::camera::DataProvider::ImageOptions depth_image_options;
 
 	depth_camera_frame_.timestamp = depth_image_message->measurement_time();
 	depth_camera_frame_.data_provider->FillImageData(image_height_, image_width_,
 		reinterpret_cast<const uint8_t*>(depth_image_message->data().data()),
 		depth_image_message->encoding());
 	
-	depth_image_options.target_color = perception::base::Color::BGR;
+	depth_image_options.target_color = perception::base::Color::GRAY;
 	depth_camera_frame_.data_provider->GetImage(depth_image_options, &depth_image_8u);
 	memcpy(depth_image.data, depth_image_8u.cpu_data(), depth_image_8u.total() * sizeof(uint8_t));
 
-	cv::imshow("Depth Camera", depth_image);
-	cvWaitKey(30);
+	bitwise_not(depth_image, depth_image);
+	depth_image.convertTo(depth_image, CV_16UC1);
+	depth_image *= 256;
+
+	if (show_depth_image_)
+	{
+		cv::imshow("Depth Camera", depth_image);
+		cvWaitKey(30);
+	}
+	
+	if (log_depth_image_)
+	{
+		cv::imwrite("/apollo/data/camera/depth/" + std::to_string(depth_camera_frame_.timestamp) + ".png", depth_image);
+	}
 
 	return;
 }
