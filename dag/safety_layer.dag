@@ -1,9 +1,18 @@
 module_config {
-    module_library : "/apollo/bazel-bin/modules/safety_layer/libsafety_layer_component.so"
+    module_library : "/apollo/bazel-bin/modules/safety_layer/component/libsafety_layer_component.so"
+
+#    timer_components {
+#        class_name : "DepthCameraComponent"
+#        config {
+#            name : "depth_camera"
+#            interval : 10
+#        }
+#    }
+
     timer_components {
-        class_name : "SafetyLayerComponent"
+        class_name : "LidarComponent"
         config {
-            name : "safety_layer"
+            name : "lidar"
             interval : 10
         }
     }

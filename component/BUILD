@@ -12,10 +12,15 @@ cc_binary(
 cc_library(
     name = "safety_layer_component_lib",
     srcs = [
-        "safety_layer_component.cc",
+        "depth_camera_component.cc",
+        "lidar_component.cc",
     ],
     hdrs = [
-        "safety_layer_component.h",
+        "depth_camera_component.h",
+        "lidar_component.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"safety_layer\\"',
     ],
     deps = [
         "//cyber",

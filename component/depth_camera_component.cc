@@ -1,31 +1,17 @@
-/******************************************************************************
- * Copyright 2018 The Apollo Authors. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *****************************************************************************/
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include "modules/perception/base/image_8u.h"
-#include "modules/safety_layer/safety_layer_component.h"
+#include "modules/safety_layer/component/depth_camera_component.h"
 
 namespace apollo
 {
 namespace safety_layer
 {
-SafetyLayerComponent::SafetyLayerComponent() : depth_image_reader_(nullptr),
+DepthCameraComponent::DepthCameraComponent() : depth_image_reader_(nullptr), 
 	image_width_(1920), image_height_(1080), gpu_id_(0), enable_undistortion_(false),
-	show_depth_image_(false), log_depth_image_(false), depth_camera_name_("depth_camera")
+	show_depth_image_(true), log_depth_image_(false), frame_counter_(0),
+	depth_camera_name_("depth_camera")
 {
 	if (InitCameraFrame() != cyber::SUCC)
 	{
@@ -34,15 +20,16 @@ SafetyLayerComponent::SafetyLayerComponent() : depth_image_reader_(nullptr),
 }
 
 bool
-SafetyLayerComponent::Init()
+DepthCameraComponent::Init()
 {
 	depth_image_reader_ = node_->CreateReader<drivers::Image>(
 		"/apollo/sensor/camera/depth/image");
+
 	return true;
 }
 
 bool
-SafetyLayerComponent::Proc()
+DepthCameraComponent::Proc()
 {
 	if (depth_image_reader_ == nullptr)
 	{
@@ -51,7 +38,7 @@ SafetyLayerComponent::Proc()
 	}
 
 	depth_image_reader_->Observe();
-	const auto &depth_image = depth_image_reader_->GetLatestObserved();
+	const auto& depth_image = depth_image_reader_->GetLatestObserved();
 
 	if (depth_image == nullptr)
 	{
@@ -64,7 +51,7 @@ SafetyLayerComponent::Proc()
 }
 
 int
-SafetyLayerComponent::InitCameraFrame()
+DepthCameraComponent::InitCameraFrame()
 {
 	depth_camera_data_provider_init_options_.image_height = image_height_;
 	depth_camera_data_provider_init_options_.image_width = image_width_;
@@ -92,7 +79,7 @@ SafetyLayerComponent::InitCameraFrame()
 }
 
 void
-SafetyLayerComponent::OnDepthImageMessage(const
+DepthCameraComponent::OnDepthImageMessage(const
 	std::shared_ptr<drivers::Image> depth_image_message)
 {
 	if (!depth_camera_frame_.data_provider)
@@ -128,7 +115,8 @@ SafetyLayerComponent::OnDepthImageMessage(const
 	
 	if (log_depth_image_)
 	{
-		cv::imwrite("/apollo/data/camera/depth/" + std::to_string(depth_camera_frame_.timestamp) + ".png", depth_image);
+		cv::imwrite("/apollo/data/camera/depth/" + std::to_string(frame_counter_) + ".png", depth_image);
+		frame_counter_ ++;
 	}
 
 	return;
