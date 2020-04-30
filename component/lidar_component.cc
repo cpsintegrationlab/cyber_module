@@ -3,12 +3,13 @@
 
 #include "modules/perception/base/image_8u.h"
 #include "modules/safety_layer/component/lidar_component.h"
+#include "modules/safety_layer/lib/depth_clustering/src/src/api/depth_clustering.h"
 
 namespace apollo
 {
 namespace safety_layer
 {
-LidarComponent::LidarComponent() : point_cloud_reader_(nullptr), frame_counter_(0)
+LidarComponent::LidarComponent() : point_cloud_reader_(nullptr), frame_counter_(0), log_(false)
 {
 }
 
@@ -17,6 +18,9 @@ LidarComponent::Init()
 {
 	point_cloud_reader_ = node_->CreateReader<drivers::PointCloud>(
 		"/apollo/sensor/lidar128/compensator/PointCloud2");
+	depth_clustering_ = std::make_shared<DepthClustering>();
+
+	depth_clustering_->init_apollo_box();
 
 	return true;
 }
@@ -38,13 +42,50 @@ LidarComponent::Proc()
 		return false;
 	}
 
-	OnPointCloudMessage(point_cloud);
+	ProcessPointCloud(point_cloud);
+
+	if (log_)
+	{
+		LogPointCloud(point_cloud);
+	}
 
 	return true;
 }
 
 void
-LidarComponent::OnPointCloudMessage(const
+LidarComponent::ProcessPointCloud(const
+	std::shared_ptr<drivers::PointCloud> point_cloud_message)
+{
+	AERROR << "Received point cloud message.";
+
+	std::vector<Eigen::Vector3f> point_cloud;
+	std::vector<std::pair<Eigen::Vector3f, Eigen::Vector3f>> output_box_frame;
+
+	for (int i = 0; i < point_cloud_message->point_size(); i ++)
+	{
+		const apollo::drivers::PointXYZIT& point = point_cloud_message->point(i);
+
+		if (std::isnan(point.x()) || std::isnan(point.y()) || std::isnan(point.z()))
+		{
+			continue;
+		}
+
+		Eigen::Vector3f point_eigen;
+
+		point_eigen.x() = point.x();
+		point_eigen.y() = point.y();
+		point_eigen.z() = point.z();
+
+		point_cloud.push_back(point_eigen);
+	}
+
+	output_box_frame = depth_clustering_->process_apollo_box(std::to_string(frame_counter_), point_cloud);
+
+	frame_counter_ ++;
+}
+
+void
+LidarComponent::LogPointCloud(const
 	std::shared_ptr<drivers::PointCloud> point_cloud_message)
 {
 	AERROR << "Received point cloud message.";

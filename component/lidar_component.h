@@ -9,6 +9,8 @@ namespace apollo
 {
 namespace safety_layer
 {
+class DepthClustering;
+
 class LidarComponent final : public cyber::TimerComponent
 {
 public:
@@ -24,11 +26,16 @@ public:
 private:
 
 	void
-	OnPointCloudMessage(const std::shared_ptr<drivers::PointCloud> point_cloud_message);
+	ProcessPointCloud(const std::shared_ptr<drivers::PointCloud> point_cloud_message);
+
+	void
+	LogPointCloud(const std::shared_ptr<drivers::PointCloud> point_cloud_message);
 
 	std::shared_ptr<cyber::Reader<drivers::PointCloud>> point_cloud_reader_;
+	std::shared_ptr<DepthClustering> depth_clustering_;
 
 	unsigned long frame_counter_;
+	bool log_;
 };
 
 CYBER_REGISTER_COMPONENT(LidarComponent)

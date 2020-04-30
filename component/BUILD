@@ -26,6 +26,7 @@ cc_library(
         "//cyber",
         "//modules/drivers/proto:sensor_proto",
         "//modules/perception/camera/common:camera_frame",
+        ":depth_clustering_lib",
     ],
 )
 
