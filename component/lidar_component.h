@@ -4,13 +4,12 @@
 #include "cyber/component/component.h"
 #include "cyber/component/timer_component.h"
 #include "modules/drivers/proto/pointcloud.pb.h"
+#include "modules/safety_layer/lib/depth_clustering/src/src/api/depth_clustering.h"
 
 namespace apollo
 {
 namespace safety_layer
 {
-class DepthClustering;
-
 class LidarComponent final : public cyber::TimerComponent
 {
 public:

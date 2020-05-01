@@ -7,8 +7,9 @@ cc_library(
     srcs = [
         "lib/depth_clustering/install/lib/libdepth_clustering.so",
     ],
-    hdrs = [
-        "lib/depth_clustering/src/src/api/depth_clustering.h",
+    hdrs = glob(["lib/depth_clustering/src/src/**/*.h"]),
+    copts = [
+        '-DMODULE_NAME=\\"safety_layer\\"',
     ],
 )
 

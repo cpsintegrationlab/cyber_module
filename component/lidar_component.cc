@@ -3,7 +3,6 @@
 
 #include "modules/perception/base/image_8u.h"
 #include "modules/safety_layer/component/lidar_component.h"
-#include "modules/safety_layer/lib/depth_clustering/src/src/api/depth_clustering.h"
 
 namespace apollo
 {
