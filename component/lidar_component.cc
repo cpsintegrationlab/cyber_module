@@ -55,7 +55,7 @@ void
 LidarComponent::ProcessPointCloud(const
 	std::shared_ptr<drivers::PointCloud> point_cloud_message)
 {
-	AERROR << "Received point cloud message.";
+	AERROR << "Processing point cloud.";
 
 	std::vector<Eigen::Vector3f> point_cloud;
 	std::vector<std::pair<Eigen::Vector3f, Eigen::Vector3f>> output_box_frame;
@@ -79,15 +79,13 @@ LidarComponent::ProcessPointCloud(const
 	}
 
 	output_box_frame = depth_clustering_->process_apollo_box(std::to_string(frame_counter_), point_cloud);
-
-	frame_counter_ ++;
 }
 
 void
 LidarComponent::LogPointCloud(const
 	std::shared_ptr<drivers::PointCloud> point_cloud_message)
 {
-	AERROR << "Received point cloud message.";
+	AERROR << "Logging point cloud.";
 
 	std::string point_cloud_file_name = "/apollo/data/lidar/frame_" + std::to_string(frame_counter_) + ".bin";
 	std::fstream point_cloud_file(point_cloud_file_name, std::ios::out | std::ios::binary);
