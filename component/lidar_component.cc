@@ -8,14 +8,14 @@ namespace apollo
 {
 namespace safety_layer
 {
-LidarComponent::LidarComponent() : point_cloud_reader_(nullptr), frame_counter_(0), log_(false)
+LidarComponent::LidarComponent() : point_cloud_reader_(nullptr), frame_counter_(0), log_(true)
 {
 }
 
 bool
 LidarComponent::Init()
 {
-	3d_ground_truth_reader_ = node_->CreateReader<common::Detection3DArray>(
+	ground_truth_3d_reader_ = node_->CreateReader<common::Detection3DArray>(
 		"/apollo/perception/ground_truth/3d_detections");
 	point_cloud_reader_ = node_->CreateReader<drivers::PointCloud>(
 		"/apollo/sensor/lidar128/compensator/PointCloud2");
@@ -29,7 +29,7 @@ LidarComponent::Init()
 bool
 LidarComponent::Proc()
 {
-	if (3d_ground_truth_reader_ == nullptr)
+	if (ground_truth_3d_reader_ == nullptr)
 	{
 		AERROR << "3D ground truth reader missing.";
 		return false;
@@ -41,13 +41,13 @@ LidarComponent::Proc()
 		return false;
 	}
 
-	3d_ground_truth_reader_->Observe();
+	ground_truth_3d_reader_->Observe();
 	point_cloud_reader_->Observe();
 
-	const auto& 3d_ground_truth = 3d_ground_truth_reader_->GetLatestObserved();
+	const auto& ground_truth_3d = ground_truth_3d_reader_->GetLatestObserved();
 	const auto& point_cloud = point_cloud_reader_->GetLatestObserved();
 
-	if (3d_ground_truth == nullptr)
+	if (ground_truth_3d == nullptr)
 	{
 		return false;
 	}
@@ -57,12 +57,11 @@ LidarComponent::Proc()
 		return false;
 	}
 
-	Process3DGroundTruth(3d_ground_truth);
 	ProcessPointCloud(point_cloud);
 
 	if (log_)
 	{
-		Log3DGroundTruth(3d_ground_truth);
+		LogGroundTruth3D(ground_truth_3d);
 		LogPointCloud(point_cloud);
 
 		frame_counter_ ++;
@@ -72,8 +71,8 @@ LidarComponent::Proc()
 }
 
 void
-LidarComponent::Process3DGroundTruth(const
-	std::shared_ptr<common::Detection3DArray> 3d_ground_truth_message)
+LidarComponent::ProcessGroundTruth3D(const
+	std::shared_ptr<common::Detection3DArray> ground_truth_3d_message)
 {
 	AERROR << "Processing 3D ground truth.";
 }
@@ -109,8 +108,8 @@ LidarComponent::ProcessPointCloud(const
 }
 
 void
-LidarComponent::Log3DGroundTruth(const
-	std::shared_ptr<common::Detection3DArray> 3d_ground_truth_message)
+LidarComponent::LogGroundTruth3D(const
+	std::shared_ptr<common::Detection3DArray> ground_truth_3d_message)
 {
 	AERROR << "Logging 3D ground truth.";
 }

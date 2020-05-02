@@ -26,18 +26,18 @@ public:
 private:
 
 	void
-	Process3DGroundTruth(const std::shared_ptr<common::Detection3DArray> 3d_ground_truth_message);
+	ProcessGroundTruth3D(const std::shared_ptr<common::Detection3DArray> ground_truth_3d_message);
 
 	void
 	ProcessPointCloud(const std::shared_ptr<drivers::PointCloud> point_cloud_message);
 
 	void
-	Log3DGroundTruth(const std::shared_ptr<common::Detection3DArray> 3d_ground_truth_message);
+	LogGroundTruth3D(const std::shared_ptr<common::Detection3DArray> ground_truth_3d_message);
 
 	void
 	LogPointCloud(const std::shared_ptr<drivers::PointCloud> point_cloud_message);
 
-	std::shared_ptr<cyber::Reader<common::Detection3DArray>> 3d_ground_truth_reader_;
+	std::shared_ptr<cyber::Reader<common::Detection3DArray>> ground_truth_3d_reader_;
 	std::shared_ptr<cyber::Reader<drivers::PointCloud>> point_cloud_reader_;
 	std::shared_ptr<DepthClustering> depth_clustering_;
 
