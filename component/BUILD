@@ -25,6 +25,7 @@ cc_library(
     ],
     deps = [
         "//cyber",
+	"//lgsvl_pkgs/lgsvl_msgs/proto:lgsvl_proto",
         "//modules/drivers/proto:sensor_proto",
         "//modules/perception/camera/common:camera_frame",
         "//modules/safety_layer:depth_clustering_lib",

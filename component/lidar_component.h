@@ -3,6 +3,7 @@
 #include "cyber/class_loader/class_loader.h"
 #include "cyber/component/component.h"
 #include "cyber/component/timer_component.h"
+#include "lgsvl_pkgs/lgsvl_msgs/proto/detection3darray.pb.h"
 #include "modules/drivers/proto/pointcloud.pb.h"
 #include "modules/safety_layer/lib/depth_clustering/src/src/api/depth_clustering.h"
 
