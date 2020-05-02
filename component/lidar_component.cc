@@ -15,6 +15,8 @@ LidarComponent::LidarComponent() : point_cloud_reader_(nullptr), frame_counter_(
 bool
 LidarComponent::Init()
 {
+	3d_ground_truth_reader_ = node_->CreateReader<common::Detection3DArray>(
+		"/apollo/perception/ground_truth/3d_detections");
 	point_cloud_reader_ = node_->CreateReader<drivers::PointCloud>(
 		"/apollo/sensor/lidar128/compensator/PointCloud2");
 	depth_clustering_ = std::make_shared<DepthClustering>();
@@ -27,28 +29,53 @@ LidarComponent::Init()
 bool
 LidarComponent::Proc()
 {
+	if (3d_ground_truth_reader_ == nullptr)
+	{
+		AERROR << "3D ground truth reader missing.";
+		return false;
+	}
+
 	if (point_cloud_reader_ == nullptr)
 	{
 		AERROR << "Point cloud reader missing.";
 		return false;
 	}
 
+	3d_ground_truth_reader_->Observe();
 	point_cloud_reader_->Observe();
+
+	const auto& 3d_ground_truth = 3d_ground_truth_reader_->GetLatestObserved();
 	const auto& point_cloud = point_cloud_reader_->GetLatestObserved();
+
+	if (3d_ground_truth == nullptr)
+	{
+		return false;
+	}
 
 	if (point_cloud == nullptr)
 	{
 		return false;
 	}
 
+	Process3DGroundTruth(3d_ground_truth);
 	ProcessPointCloud(point_cloud);
 
 	if (log_)
 	{
+		Log3DGroundTruth(3d_ground_truth);
 		LogPointCloud(point_cloud);
+
+		frame_counter_ ++;
 	}
 
 	return true;
+}
+
+void
+LidarComponent::Process3DGroundTruth(const
+	std::shared_ptr<common::Detection3DArray> 3d_ground_truth_message)
+{
+	AERROR << "Processing 3D ground truth.";
 }
 
 void
@@ -79,6 +106,13 @@ LidarComponent::ProcessPointCloud(const
 	}
 
 	output_box_frame = depth_clustering_->process_apollo_box(std::to_string(frame_counter_), point_cloud);
+}
+
+void
+LidarComponent::Log3DGroundTruth(const
+	std::shared_ptr<common::Detection3DArray> 3d_ground_truth_message)
+{
+	AERROR << "Logging 3D ground truth.";
 }
 
 void
@@ -115,7 +149,6 @@ LidarComponent::LogPointCloud(const
 		}
 	
 		point_cloud_file.close();
-		frame_counter_ ++;
 	}
 }
 } // safety_layer
