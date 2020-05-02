@@ -18,6 +18,8 @@ public:
 
 	LidarComponent();
 
+	~LidarComponent();
+
 	bool
 	Init() override;
 

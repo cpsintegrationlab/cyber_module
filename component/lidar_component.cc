@@ -13,6 +13,23 @@ LidarComponent::LidarComponent() : point_cloud_reader_(nullptr), frame_counter_(
 {
 }
 
+LidarComponent::~LidarComponent()
+{
+        if (log_)
+	{
+	        ground_truth_3d_log_file_.open(ground_truth_3d_log_file_name_, std::fstream::out | std::fstream::trunc);
+
+		if (!ground_truth_3d_log_file_.is_open() || !ground_truth_3d_log_file_.good())
+		{
+		        return;
+		}
+
+		boost::property_tree::write_json(ground_truth_3d_log_file_, ground_truth_3d_log_file_tree_);
+
+		ground_truth_3d_log_file_.close();
+	}
+}
+
 bool
 LidarComponent::Init()
 {
@@ -23,11 +40,6 @@ LidarComponent::Init()
 	depth_clustering_ = std::make_shared<DepthClustering>();
 
 	depth_clustering_->init_apollo_box();
-
-	if (log_)
-	{
-		ground_truth_3d_log_file_.open(ground_truth_3d_log_file_name_, std::ios::out);
-	}
 
 	return true;
 }
@@ -119,18 +131,8 @@ LidarComponent::LogGroundTruth3D(const
 {
 	AERROR << "Logging 3D ground truth.";
 
-	if (!ground_truth_3d_log_file_.is_open() || !ground_truth_3d_log_file_.good())
-	{
-		return;
-	}
-
 	std::string cloud_file_name = "frame_" + std::to_string(frame_counter_) + ".bin";
-
-	ground_truth_3d_log_file_tree_.add_child(boost::property_tree::ptree::path_type(
-			cloud_file_name, '/'), boost::property_tree::ptree());
-
-	auto &cloud_file_array = ground_truth_3d_log_file_tree_.get_child(
-			boost::property_tree::ptree::path_type(cloud_file_name, '/'));
+	boost::property_tree::ptree cloud_file_array;
 
 	for (const auto& detection : ground_truth_3d_message->detections())
 	{
@@ -157,10 +159,14 @@ LidarComponent::LogGroundTruth3D(const
 		cloud_object_array_value.put_value(bounding_box.size().z());
 		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
 
+		cloud_object_array_value.put_value(detection.label());
+		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
+
 		cloud_file_array.push_back(std::make_pair("", cloud_object_array));
 	}
 
-	boost::property_tree::write_json(ground_truth_3d_log_file_, ground_truth_3d_log_file_tree_);
+	ground_truth_3d_log_file_tree_.add_child(boost::property_tree::ptree::path_type(
+			cloud_file_name, '/'), cloud_file_array);
 }
 
 void
