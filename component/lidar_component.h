@@ -1,4 +1,5 @@
 #include <memory>
+#include <boost/property_tree/ptree.hpp>
 
 #include "cyber/class_loader/class_loader.h"
 #include "cyber/component/component.h"
@@ -41,6 +42,9 @@ private:
 	std::shared_ptr<cyber::Reader<drivers::PointCloud>> point_cloud_reader_;
 	std::shared_ptr<DepthClustering> depth_clustering_;
 
+	const std::string ground_truth_3d_log_file_name_ = "/apollo/data/lidar/ground_truth_3d.json";
+	boost::property_tree::ptree ground_truth_3d_log_file_tree_;
+	std::ofstream ground_truth_3d_log_file_;
 	unsigned long frame_counter_;
 	bool log_;
 };

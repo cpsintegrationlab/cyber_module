@@ -23,6 +23,11 @@ LidarComponent::Init()
 
 	depth_clustering_->init_apollo_box();
 
+	if (log_)
+	{
+		ground_truth_3d_file_.open(ground_truth_3d_log_file_name_, std::ios::out);
+	}
+
 	return true;
 }
 
@@ -112,6 +117,49 @@ LidarComponent::LogGroundTruth3D(const
 	std::shared_ptr<common::Detection3DArray> ground_truth_3d_message)
 {
 	AERROR << "Logging 3D ground truth.";
+
+	if (!ground_truth_3d_log_file_.is_open() || !ground_truth_3d_log_file_.good())
+	{
+		return;
+	}
+
+	std::string cloud_file_name = "frame_" + std::to_string(frame_counter_) + ".bin";
+
+	ground_truth_3d_log_file_tree_.add_child(boost::property_tree::ptree::path_type(
+			cloud_file_name, '/'), boost::property_tree::ptree());
+
+	auto &cloud_file_array = ground_truth_3d_log_file_tree_.get_child(
+			boost::property_tree::ptree::path_type(cloud_file_name, '/'));
+
+	for (const auto& detection : ground_truth_3d_message->detections)
+	{
+		boost::property_tree::ptree cloud_object_array_value;
+		boost::property_tree::ptree cloud_object_array;
+
+		auto bounding_box = detection.bbox;
+
+		cloud_object_array_value.put_value(bounding_box.position.position.x());
+		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
+
+		cloud_object_array_value.put_value(bounding_box.position.position.y());
+		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
+
+		cloud_object_array_value.put_value(bounding_box.position.position.z());
+		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
+
+		cloud_object_array_value.put_value(bounding_box.size.x());
+		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
+
+		cloud_object_array_value.put_value(bounding_box.size.y());
+		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
+
+		cloud_object_array_value.put_value(bounding_box.size.z());
+		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
+
+		cloud_file_array.push_back(std::make_pair("", cloud_object_array));
+	}
+
+	boost::property_tree::write_json(ground_truth_3d_log_file_, ground_truth_3d_log_file_tree_);
 }
 
 void
@@ -120,12 +168,12 @@ LidarComponent::LogPointCloud(const
 {
 	AERROR << "Logging point cloud.";
 
-	std::string point_cloud_file_name = "/apollo/data/lidar/frame_" + std::to_string(frame_counter_) + ".bin";
-	std::fstream point_cloud_file(point_cloud_file_name, std::ios::out | std::ios::binary);
+	std::string point_cloud_log_file_name = "/apollo/data/lidar/frame_" + std::to_string(frame_counter_) + ".bin";
+	std::ofstream point_cloud_log_file(point_cloud_log_file_name, std::ios::out | std::ios::binary);
 
-	if (point_cloud_file.good())
+	if (point_cloud_log_file.good())
 	{
-		point_cloud_file.seekg(0, std::ios::beg);
+		point_cloud_log_file.seekg(0, std::ios::beg);
 
 		for (int i = 0; i < point_cloud_message->point_size(); i ++)
 		{
@@ -141,13 +189,13 @@ LidarComponent::LogPointCloud(const
 			float point_z = point.z();
 			unsigned point_intensity = point.intensity();
 
-			point_cloud_file.write(reinterpret_cast<char*>(&point_x), sizeof(float));
-			point_cloud_file.write(reinterpret_cast<char*>(&point_y), sizeof(float));
-			point_cloud_file.write(reinterpret_cast<char*>(&point_z), sizeof(float));
-			point_cloud_file.write(reinterpret_cast<char*>(&point_intensity), sizeof(float));
+			point_cloud_log_file.write(reinterpret_cast<char*>(&point_x), sizeof(float));
+			point_cloud_log_file.write(reinterpret_cast<char*>(&point_y), sizeof(float));
+			point_cloud_log_file.write(reinterpret_cast<char*>(&point_z), sizeof(float));
+			point_cloud_log_file.write(reinterpret_cast<char*>(&point_intensity), sizeof(float));
 		}
 	
-		point_cloud_file.close();
+		point_cloud_log_file.close();
 	}
 }
 } // safety_layer
