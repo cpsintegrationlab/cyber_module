@@ -42,6 +42,7 @@ private:
 
 	std::shared_ptr<cyber::Reader<common::Detection3DArray>> ground_truth_3d_reader_;
 	std::shared_ptr<cyber::Reader<drivers::PointCloud>> point_cloud_reader_;
+	std::shared_ptr<cyber::Writer<common::Detection3DArray>> depth_clustering_detection_writer_;
 	std::shared_ptr<DepthClustering> depth_clustering_;
 
 	const std::string ground_truth_3d_log_file_name_ = "/apollo/data/lidar/ground_truth_3d.json";

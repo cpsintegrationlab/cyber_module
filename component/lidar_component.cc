@@ -9,7 +9,7 @@ namespace apollo
 {
 namespace safety_layer
 {
-LidarComponent::LidarComponent() : point_cloud_reader_(nullptr), frame_counter_(0), log_(true)
+LidarComponent::LidarComponent() : point_cloud_reader_(nullptr), frame_counter_(0), log_(false)
 {
 }
 
@@ -39,7 +39,9 @@ LidarComponent::Init()
 		"/apollo/perception/ground_truth/3d_detections");
 	point_cloud_reader_ = node_->CreateReader<drivers::PointCloud>(
 		"/apollo/sensor/lidar128/compensator/PointCloud2");
-	depth_clustering_ = std::make_shared<DepthClustering>(10, 10000, 5, 10, 9, true);
+	depth_clustering_detection_writer_ = node_->CreateWriter<common::Detection3DArray>(
+		"/apollo/safety_layer/depth_clustering_detections");
+	depth_clustering_ = std::make_shared<DepthClustering>(10, 10000, 5, 10, 9, log_);
 
 	depth_clustering_->init_apollo_box();
 
@@ -126,6 +128,24 @@ LidarComponent::ProcessPointCloud(const
 
 	std::string cloud_file_name = "frame_" + std::to_string(frame_counter_) + ".bin";
 	output_box_frame = depth_clustering_->process_apollo_box(cloud_file_name, point_cloud);
+
+	auto detection_3d_array = std::make_shared<common::Detection3DArray>();
+
+	for (const auto& output_box : output_box_frame)
+	{
+		common::Detection3D detection_3d;
+
+		detection_3d.bbox().position().position().set_x(output_box.first.x());
+		detection_3d.bbox().position().position().set_y(output_box.first.y());
+		detection_3d.bbox().position().position().set_z(output_box.first.z());
+		detection_3d.bbox().size().set_x(output_box.second.x());
+		detection_3d.bbox().size().set_y(output_box.second.y());
+		detection_3d.bbox().size().set_z(output_box.second.z());
+
+		detection_3d_array->detetions().push_back(detection_3d);
+	}
+
+	depth_clustering_detection_writer_->Write(detection_3d_array);
 }
 
 void
