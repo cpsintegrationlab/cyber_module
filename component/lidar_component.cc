@@ -15,13 +15,13 @@ LidarComponent::LidarComponent() : point_cloud_reader_(nullptr), frame_counter_(
 
 LidarComponent::~LidarComponent()
 {
-        if (log_)
+	if (log_)
 	{
-	        ground_truth_3d_log_file_.open(ground_truth_3d_log_file_name_, std::fstream::out | std::fstream::trunc);
+		ground_truth_3d_log_file_.open(ground_truth_3d_log_file_name_, std::fstream::out | std::fstream::trunc);
 
 		if (!ground_truth_3d_log_file_.is_open() || !ground_truth_3d_log_file_.good())
 		{
-		        return;
+			return;
 		}
 
 		boost::property_tree::write_json(ground_truth_3d_log_file_, ground_truth_3d_log_file_tree_);
