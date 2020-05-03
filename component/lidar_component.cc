@@ -142,7 +142,7 @@ LidarComponent::ProcessPointCloud(const
 		detection_3d.mutable_bbox()->mutable_size()->set_y(output_box.second.y());
 		detection_3d.mutable_bbox()->mutable_size()->set_z(output_box.second.z());
 
-		detection_3d_array->mutable_detections()->push_back(detection_3d);
+		detection_3d_array->add_detections()->CopyFrom(detection_3d);
 	}
 
 	depth_clustering_detection_writer_->Write(detection_3d_array);
