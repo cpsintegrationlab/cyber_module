@@ -135,14 +135,14 @@ LidarComponent::ProcessPointCloud(const
 	{
 		common::Detection3D detection_3d;
 
-		detection_3d.bbox().position().position().set_x(output_box.first.x());
-		detection_3d.bbox().position().position().set_y(output_box.first.y());
-		detection_3d.bbox().position().position().set_z(output_box.first.z());
-		detection_3d.bbox().size().set_x(output_box.second.x());
-		detection_3d.bbox().size().set_y(output_box.second.y());
-		detection_3d.bbox().size().set_z(output_box.second.z());
+		detection_3d.mutable_bbox()->mutable_position()->mutable_position()->set_x(output_box.first.x());
+		detection_3d.mutable_bbox()->mutable_position()->mutable_position()->set_y(output_box.first.y());
+		detection_3d.mutable_bbox()->mutable_position()->mutable_position()->set_z(output_box.first.z());
+		detection_3d.mutable_bbox()->mutable_size()->set_x(output_box.second.x());
+		detection_3d.mutable_bbox()->mutable_size()->set_y(output_box.second.y());
+		detection_3d.mutable_bbox()->mutable_size()->set_z(output_box.second.z());
 
-		detection_3d_array->detetions().push_back(detection_3d);
+		detection_3d_array->mutable_detections()->push_back(detection_3d);
 	}
 
 	depth_clustering_detection_writer_->Write(detection_3d_array);
