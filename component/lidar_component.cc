@@ -28,6 +28,8 @@ LidarComponent::~LidarComponent()
 
 		ground_truth_3d_log_file_.close();
 	}
+
+	depth_clustering_->finish();
 }
 
 bool
@@ -37,7 +39,7 @@ LidarComponent::Init()
 		"/apollo/perception/ground_truth/3d_detections");
 	point_cloud_reader_ = node_->CreateReader<drivers::PointCloud>(
 		"/apollo/sensor/lidar128/compensator/PointCloud2");
-	depth_clustering_ = std::make_shared<DepthClustering>();
+	depth_clustering_ = std::make_shared<DepthClustering>(10, 10000, 5, 10, 9, true);
 
 	depth_clustering_->init_apollo_box();
 
