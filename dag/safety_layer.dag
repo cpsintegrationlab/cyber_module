@@ -16,4 +16,12 @@ module_config {
             interval : 10
         }
     }
+
+    timer_components {
+        class_name : "DecisionComponent"
+        config {
+            name : "decision"
+            interval : 10
+        }
+    }
 }
