@@ -48,6 +48,13 @@ DecisionComponent::ProcessDepthClusteringDetection(const
 	std::shared_ptr<common::Detection3DArray> depth_clustering_detection_message)
 {
 	AERROR << "Processing depth clustering detections.";
+
+	auto control_command = std::make_shared<control::ControlCommand>();
+
+	control_command->set_throttle(50);
+	control_command->set_brake(0);
+
+	control_command_writer_->Write(control_command);
 }
 
 } // safety_layer

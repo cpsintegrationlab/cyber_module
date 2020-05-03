@@ -16,8 +16,6 @@ public:
 
 	DecisionComponent();
 
-	~DecisionComponent();
-
 	bool
 	Init() override;
 
