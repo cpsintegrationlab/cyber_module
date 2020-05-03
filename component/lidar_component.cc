@@ -182,6 +182,18 @@ LidarComponent::LogGroundTruth3D(const
 		cloud_object_array_value.put_value(bounding_box.size().z());
 		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
 
+		cloud_object_array_value.put_value(bounding_box.position().orientation().qw());
+		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
+
+		cloud_object_array_value.put_value(bounding_box.position().orientation().qx());
+		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
+
+		cloud_object_array_value.put_value(bounding_box.position().orientation().qy());
+		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
+
+		cloud_object_array_value.put_value(bounding_box.position().orientation().qz());
+		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
+
 		cloud_object_array_value.put_value(detection.label());
 		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
 
