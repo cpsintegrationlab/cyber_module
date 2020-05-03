@@ -124,7 +124,8 @@ LidarComponent::ProcessPointCloud(const
 		point_cloud.push_back(point_eigen);
 	}
 
-	output_box_frame = depth_clustering_->process_apollo_box(std::to_string(frame_counter_), point_cloud);
+	std::string cloud_file_name = "frame_" + std::to_string(frame_counter_) + ".bin";
+	output_box_frame = depth_clustering_->process_apollo_box(cloud_file_name, point_cloud);
 }
 
 void
