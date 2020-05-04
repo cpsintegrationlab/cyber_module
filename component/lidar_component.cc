@@ -69,24 +69,28 @@ LidarComponent::Proc()
 	const auto& ground_truth_3d = ground_truth_3d_reader_->GetLatestObserved();
 	const auto& point_cloud = point_cloud_reader_->GetLatestObserved();
 
-	if (ground_truth_3d == nullptr)
+	if (point_cloud != nullptr)
 	{
-		return false;
+		ProcessPointCloud(point_cloud);
 	}
-
-	if (point_cloud == nullptr)
+	else
 	{
-		return false;
+		AERROR << "Point cloud message missing.";
 	}
-
-	ProcessPointCloud(point_cloud);
 
 	if (log_)
 	{
-		LogGroundTruth3D(ground_truth_3d);
-		LogPointCloud(point_cloud);
+		if (point_cloud != nullptr && ground_truth_3d != nullptr)
+		{
+			LogGroundTruth3D(ground_truth_3d);
+			LogPointCloud(point_cloud);
 
-		frame_counter_ ++;
+			frame_counter_ ++;
+		}
+		else
+		{
+			AERROR << "Logging message missing.";
+		}
 	}
 
 	return true;

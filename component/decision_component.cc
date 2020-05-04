@@ -44,17 +44,23 @@ DecisionComponent::Proc()
 	const auto& depth_clustering_detection = depth_clustering_detection_reader_->GetLatestObserved();
 	const auto& control_command = control_command_reader_->GetLatestObserved();
 
-	if (depth_clustering_detection == nullptr)
+	if (depth_clustering_detection != nullptr)
 	{
-		return false;
+		ProcessDepthClusteringDetection(depth_clustering_detection);
+	}
+	else
+	{
+		AERROR << "Depth clustering detection message missing.";
 	}
 
-	if (control_command == nullptr)
+	if (control_command != nullptr)
 	{
-		return false;
+		ProcessControlCommand(control_command);
 	}
-
-	ProcessControlCommand(control_command);
+	else
+	{
+		AERROR << "Control command message missing.";
+	}
 
 	return true;
 }
@@ -74,7 +80,7 @@ DecisionComponent::ProcessControlCommand(const
 
 	auto control_command = std::make_shared<control::ControlCommand>(*control_command_message);
 
-	control_command->set_throttle(50);
+	control_command->set_throttle(5);
 	control_command->set_brake(0);
 
 	control_command_writer_->Write(control_command);
