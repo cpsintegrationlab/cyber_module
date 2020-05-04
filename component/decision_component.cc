@@ -1,3 +1,4 @@
+#include <limits>
 #include <Eigen/Dense>
 
 #include "modules/safety_layer/component/decision_component.h"
@@ -7,9 +8,10 @@ namespace apollo
 namespace safety_layer
 {
 DecisionComponent::DecisionComponent() :
-		depth_clustering_detection_reader_(nullptr), control_command_reader_(nullptr), control_command_writer_(
-						nullptr), override_(false), override_braking_percentage_(100.0), override_distance_threshold_(
-						10.0)
+		depth_clustering_detection_reader_(nullptr), chassis_reader_(nullptr), control_command_reader_(
+						nullptr), control_command_writer_(nullptr), braking_acceleration_(0.8 * 9.81), distance_to_collision_(
+						std::numeric_limits<double>::infinity()), override_(false), override_braking_percentage_(
+						100.0), override_distance_threshold_(10.0)
 {
 }
 
@@ -18,6 +20,8 @@ DecisionComponent::Init()
 {
 	depth_clustering_detection_reader_ = node_->CreateReader<common::Detection3DArray>(
 		"/apollo/safety_layer/depth_clustering_detections");
+	chassis_reader_ = node_->CreateReader<canbus::Chassis>(
+		"/apollo/canbus/chassis");
 	control_command_reader_ = node_->CreateReader<control::ControlCommand>(
 		"/apollo/control");
 	control_command_writer_ = node_->CreateWriter<control::ControlCommand>(
@@ -35,6 +39,12 @@ DecisionComponent::Proc()
 		return false;
 	}
 
+	if (chassis_reader_ == nullptr)
+	{
+		AERROR << "Chassis reader missing.";
+		return false;
+	}
+
 	if (control_command_reader_ == nullptr)
 	{
 		AERROR << "Control command reader missing.";
@@ -42,9 +52,11 @@ DecisionComponent::Proc()
 	}
 
 	depth_clustering_detection_reader_->Observe();
+	chassis_reader_->Observe();
 	control_command_reader_->Observe();
 
 	const auto& depth_clustering_detection = depth_clustering_detection_reader_->GetLatestObserved();
+	const auto& chassis = chassis_reader_->GetLatestObserved();
 	const auto& control_command = control_command_reader_->GetLatestObserved();
 
 	if (depth_clustering_detection != nullptr)
@@ -54,6 +66,15 @@ DecisionComponent::Proc()
 	else
 	{
 		AERROR << "Depth clustering detection message missing.";
+	}
+
+	if (chassis != nullptr)
+	{
+		ProcessChassis(chassis);
+	}
+	else
+	{
+		AERROR << "Chassis message missing.";
 	}
 
 	if (control_command != nullptr)
@@ -96,6 +117,16 @@ DecisionComponent::ProcessDepthClusteringDetection(const
 			break;
 		}
 	}
+}
+
+void
+DecisionComponent::ProcessChassis(const std::shared_ptr<canbus::Chassis> chassis_message)
+{
+	AERROR << "Processing chassis.";
+
+	float vehicle_speed_mps = chassis_message->speed_mps();
+
+	braking_distance_ = (vehicle_speed_mps * vehicle_speed_mps) / (2 * braking_acceleration_);
 }
 
 void
