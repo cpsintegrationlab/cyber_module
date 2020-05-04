@@ -26,17 +26,17 @@ public:
 private:
 
 	void
+	ProcessChassis(const std::shared_ptr<canbus::Chassis> chassis_message);
+
+	void
 	ProcessDepthClusteringDetection(
 			const std::shared_ptr<common::Detection3DArray> depth_clustering_detection_message);
 
 	void
-	ProcessChassis(const std::shared_ptr<canbus::Chassis> chassis_message);
-
-	void
 	ProcessControlCommand(const std::shared_ptr<control::ControlCommand> control_command_message);
 
-	std::shared_ptr<cyber::Reader<common::Detection3DArray>> depth_clustering_detection_reader_;
 	std::shared_ptr<cyber::Reader<canbus::Chassis>> chassis_reader_;
+	std::shared_ptr<cyber::Reader<common::Detection3DArray>> depth_clustering_detection_reader_;
 	std::shared_ptr<cyber::Reader<control::ControlCommand>> control_command_reader_;
 	std::shared_ptr<cyber::Writer<control::ControlCommand>> control_command_writer_;
 
