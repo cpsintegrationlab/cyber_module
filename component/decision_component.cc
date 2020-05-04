@@ -10,7 +10,7 @@ namespace safety_layer
 DecisionComponent::DecisionComponent() :
 		chassis_reader_(nullptr), depth_clustering_detection_reader_(nullptr), control_command_reader_(
 				nullptr), control_command_writer_(nullptr), braking_acceleration_(0.8 * 9.81), braking_distance_(
-				std::numeric_limits<double>::infinity()), braking_slack_(5.0), override_(false), override_braking_percentage_(
+				std::numeric_limits<double>::infinity()), braking_slack_(10.0), override_(false), override_braking_percentage_(
 				100.0)
 {
 }
