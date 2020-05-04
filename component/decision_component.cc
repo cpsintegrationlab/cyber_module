@@ -9,7 +9,7 @@ namespace safety_layer
 DecisionComponent::DecisionComponent() :
 		depth_clustering_detection_reader_(nullptr), control_command_reader_(nullptr), control_command_writer_(
 						nullptr), override_(false), override_braking_percentage_(100.0), override_distance_threshold_(
-						5.0)
+						10.0)
 {
 }
 
@@ -87,7 +87,9 @@ DecisionComponent::ProcessDepthClusteringDetection(const
 		bounding_box_extent.y() = bounding_box.size().y();
 		bounding_box_extent.z() = bounding_box.size().z();
 
-		if (bounding_box_center.norm() < override_distance_threshold_)
+		double bounding_box_volume = bounding_box_extent.x() * bounding_box_extent.y() * bounding_box_extent.z();
+
+		if (bounding_box_volume > 0.2 && bounding_box_center.norm() < override_distance_threshold_)
 		{
 			override_ = true;
 			break;
