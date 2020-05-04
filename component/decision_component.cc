@@ -15,7 +15,7 @@ DecisionComponent::Init()
 {
 	depth_clustering_detection_reader_ = node_->CreateReader<common::Detection3DArray>(
 		"/apollo/safety_layer/depth_clustering_detections");
-	control_command_reader_ = node_->CreateWriter<control::ControlCommand>(
+	control_command_reader_ = node_->CreateReader<control::ControlCommand>(
 		"/apollo/control");
 	control_command_writer_ = node_->CreateWriter<control::ControlCommand>(
 		"/apollo/safety_layer/control");
