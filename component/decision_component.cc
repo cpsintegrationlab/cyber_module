@@ -1,3 +1,5 @@
+#include <Eigen/Dense>
+
 #include "modules/safety_layer/component/decision_component.h"
 
 namespace apollo

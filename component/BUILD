@@ -32,6 +32,7 @@ cc_library(
 		"//modules/control/proto:control_proto",
 		"//modules/perception/camera/common:camera_frame",
 		"//modules/safety_layer:depth_clustering_lib",
+		"@eigen",
 	],
 )
 
