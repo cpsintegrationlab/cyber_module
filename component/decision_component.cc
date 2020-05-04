@@ -1,5 +1,4 @@
 #include <limits>
-#include <Eigen/Dense>
 
 #include "modules/safety_layer/component/decision_component.h"
 
@@ -10,8 +9,7 @@ namespace safety_layer
 DecisionComponent::DecisionComponent() :
 		chassis_reader_(nullptr), depth_clustering_detection_reader_(nullptr), control_command_reader_(
 				nullptr), control_command_writer_(nullptr), braking_acceleration_(0.8 * 9.81), braking_distance_(
-				std::numeric_limits<double>::infinity()), braking_slack_(10.0), override_(false), override_braking_percentage_(
-				100.0)
+				0.0), braking_slack_(10.0), override_(false), override_braking_percentage_(100.0)
 {
 }
 
@@ -126,7 +124,9 @@ DecisionComponent::ProcessDepthClusteringDetection(const
 			continue;
 		}
 
-		if (bounding_box_center.norm() < braking_distance_ + braking_slack_)
+		double bounding_box_distance = CalculateBoundingBoxDistance(bounding_box_center, bounding_box_extent);
+
+		if (bounding_box_distance < braking_distance_ + braking_slack_)
 		{
 			override_ = true;
 			break;
@@ -157,5 +157,62 @@ DecisionComponent::ProcessControlCommand(const
 	control_command_writer_->Write(control_command);
 }
 
+double
+DecisionComponent::CalculateBoundingBoxDistance(const Eigen::Vector3d& center, const Eigen::Vector3d& extent)
+{
+	Eigen::Vector3d bounding_box_vertex;
+	std::vector<double> bounding_box_vertex_distances;
+	double bounding_box_vertex_distance_min = std::numeric_limits<double>::max();
+
+	bounding_box_vertex.x() = center.x() - (extent.x() / 2.0);
+	bounding_box_vertex.y() = center.y() - (extent.y() / 2.0);
+	bounding_box_vertex.z() = center.z() - (extent.z() / 2.0);
+	bounding_box_vertex_distances.push_back(bounding_box_vertex.norm());
+
+	bounding_box_vertex.x() = center.x() - (extent.x() / 2.0);
+	bounding_box_vertex.y() = center.y() - (extent.y() / 2.0);
+	bounding_box_vertex.z() = center.z() + (extent.z() / 2.0);
+	bounding_box_vertex_distances.push_back(bounding_box_vertex.norm());
+
+	bounding_box_vertex.x() = center.x() - (extent.x() / 2.0);
+	bounding_box_vertex.y() = center.y() + (extent.y() / 2.0);
+	bounding_box_vertex.z() = center.z() - (extent.z() / 2.0);
+	bounding_box_vertex_distances.push_back(bounding_box_vertex.norm());
+
+	bounding_box_vertex.x() = center.x() - (extent.x() / 2.0);
+	bounding_box_vertex.y() = center.y() + (extent.y() / 2.0);
+	bounding_box_vertex.z() = center.z() + (extent.z() / 2.0);
+	bounding_box_vertex_distances.push_back(bounding_box_vertex.norm());
+
+	bounding_box_vertex.x() = center.x() + (extent.x() / 2.0);
+	bounding_box_vertex.y() = center.y() - (extent.y() / 2.0);
+	bounding_box_vertex.z() = center.z() - (extent.z() / 2.0);
+	bounding_box_vertex_distances.push_back(bounding_box_vertex.norm());
+
+	bounding_box_vertex.x() = center.x() + (extent.x() / 2.0);
+	bounding_box_vertex.y() = center.y() - (extent.y() / 2.0);
+	bounding_box_vertex.z() = center.z() + (extent.z() / 2.0);
+	bounding_box_vertex_distances.push_back(bounding_box_vertex.norm());
+
+	bounding_box_vertex.x() = center.x() + (extent.x() / 2.0);
+	bounding_box_vertex.y() = center.y() + (extent.y() / 2.0);
+	bounding_box_vertex.z() = center.z() - (extent.z() / 2.0);
+	bounding_box_vertex_distances.push_back(bounding_box_vertex.norm());
+
+	bounding_box_vertex.x() = center.x() + (extent.x() / 2.0);
+	bounding_box_vertex.y() = center.y() + (extent.y() / 2.0);
+	bounding_box_vertex.z() = center.z() + (extent.z() / 2.0);
+	bounding_box_vertex_distances.push_back(bounding_box_vertex.norm());
+
+	for (const auto& bounding_box_vertex_distance : bounding_box_vertex_distances)
+	{
+		if (bounding_box_vertex_distance < bounding_box_vertex_distance_min)
+		{
+			bounding_box_vertex_distance_min = bounding_box_vertex_distance;
+		}
+	}
+
+	return bounding_box_vertex_distance_min;
+}
 } // safety_layer
 } // apollo

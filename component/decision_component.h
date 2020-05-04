@@ -1,4 +1,5 @@
 #include <memory>
+#include <Eigen/Dense>
 
 #include "cyber/class_loader/class_loader.h"
 #include "cyber/component/component.h"
@@ -34,6 +35,9 @@ private:
 
 	void
 	ProcessControlCommand(const std::shared_ptr<control::ControlCommand> control_command_message);
+
+	double
+	CalculateBoundingBoxDistance(const Eigen::Vector3d& center, const Eigen::Vector3d& extent);
 
 	std::shared_ptr<cyber::Reader<canbus::Chassis>> chassis_reader_;
 	std::shared_ptr<cyber::Reader<common::Detection3DArray>> depth_clustering_detection_reader_;
