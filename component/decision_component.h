@@ -42,10 +42,10 @@ private:
 
 	double braking_acceleration_;
 	double braking_distance_;
+	double braking_slack_;
 
 	bool override_;
 	double override_braking_percentage_;
-	double override_distance_threshold_;
 };
 
 CYBER_REGISTER_COMPONENT (DecisionComponent)

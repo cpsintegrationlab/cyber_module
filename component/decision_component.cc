@@ -9,9 +9,9 @@ namespace safety_layer
 {
 DecisionComponent::DecisionComponent() :
 		chassis_reader_(nullptr), depth_clustering_detection_reader_(nullptr), control_command_reader_(
-						nullptr), control_command_writer_(nullptr), braking_acceleration_(0.8 * 9.81), braking_distance_(
-						std::numeric_limits<double>::infinity()), override_(false), override_braking_percentage_(
-						100.0), override_distance_threshold_(10.0)
+				nullptr), control_command_writer_(nullptr), braking_acceleration_(0.8 * 9.81), braking_distance_(
+				std::numeric_limits<double>::infinity()), braking_slack_(5.0), override_(false), override_braking_percentage_(
+				100.0)
 {
 }
 
@@ -121,7 +121,12 @@ DecisionComponent::ProcessDepthClusteringDetection(const
 		double bounding_box_volume = bounding_box_extent.x() * bounding_box_extent.y()
 						* bounding_box_extent.z();
 
-		if (bounding_box_volume > 0.2 && bounding_box_center.norm() < override_distance_threshold_)
+		if (bounding_box_volume <= 0.2)
+		{
+			continue;
+		}
+
+		if (bounding_box_center.norm() < braking_distance_ + braking_slack_)
 		{
 			override_ = true;
 			break;
