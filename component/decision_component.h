@@ -34,6 +34,10 @@ private:
 	std::shared_ptr<cyber::Reader<common::Detection3DArray>> depth_clustering_detection_reader_;
 	std::shared_ptr<cyber::Reader<control::ControlCommand>> control_command_reader_;
 	std::shared_ptr<cyber::Writer<control::ControlCommand>> control_command_writer_;
+
+	bool override_;
+	double override_braking_percentage_;
+	double override_distance_threshold_;
 };
 
 CYBER_REGISTER_COMPONENT (DecisionComponent)
