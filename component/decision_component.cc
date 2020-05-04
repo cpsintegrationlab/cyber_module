@@ -87,7 +87,8 @@ DecisionComponent::ProcessDepthClusteringDetection(const
 		bounding_box_extent.y() = bounding_box.size().y();
 		bounding_box_extent.z() = bounding_box.size().z();
 
-		double bounding_box_volume = bounding_box_extent.x() * bounding_box_extent.y() * bounding_box_extent.z();
+		double bounding_box_volume = bounding_box_extent.x() * bounding_box_extent.y()
+						* bounding_box_extent.z();
 
 		if (bounding_box_volume > 0.2 && bounding_box_center.norm() < override_distance_threshold_)
 		{
