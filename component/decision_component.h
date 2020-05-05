@@ -1,3 +1,4 @@
+#include <fstream>
 #include <memory>
 #include <Eigen/Dense>
 
@@ -17,6 +18,8 @@ class DecisionComponent final : public cyber::TimerComponent
 public:
 
 	DecisionComponent();
+
+	~DecisionComponent();
 
 	bool
 	Init() override;
@@ -52,6 +55,10 @@ private:
 
 	bool override_;
 	double override_braking_percentage_;
+
+	const std::string chassis_log_file_name_ = "/apollo/data/lidar/chassis.json";
+	std::ofstream chassis_log_file_;
+	bool log_;
 };
 
 CYBER_REGISTER_COMPONENT (DecisionComponent)

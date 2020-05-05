@@ -10,8 +10,13 @@ DecisionComponent::DecisionComponent() :
 		chassis_reader_(nullptr), depth_clustering_detection_reader_(nullptr), control_command_reader_(
 				nullptr), control_command_writer_(nullptr), cruise_(false), target_speed_mps_(
 				5.0), braking_acceleration_(0.8 * 9.81), braking_distance_(0.0), braking_slack_(
-				10.0), override_(false), override_braking_percentage_(100.0)
+				10.0), override_(false), override_braking_percentage_(100.0), log_(false)
 {
+}
+
+DecisionComponent::~DecisionComponent()
+{
+	chassis_log_file_.close();
 }
 
 bool
@@ -25,6 +30,23 @@ DecisionComponent::Init()
 		"/apollo/control");
 	control_command_writer_ = node_->CreateWriter<control::ControlCommand>(
 		"/apollo/safety_layer/control");
+
+	if (log_)
+	{
+		chassis_log_file_.open(chassis_log_file_name_, std::fstream::out | std::fstream::trunc);
+
+		if (chassis_log_file_.is_open() && chassis_log_file_.good())
+		{
+			chassis_log_file_ << "Target Vehicle Speed (mps)\tBraking Slack (m)" << std::endl;
+			chassis_log_file_ << target_speed_mps_ << "\t" << braking_slack_ << std::endl;
+			chassis_log_file_ << std::endl;
+			chassis_log_file_ << "Vehicle Speed (mps)\tBraking Distance (m)" << std::endl;
+		}
+		else
+		{
+			AERROR << "Failed to open chassis log file.";
+		}
+	}
 
 	return true;
 }
@@ -101,6 +123,18 @@ DecisionComponent::ProcessChassis(const std::shared_ptr<canbus::Chassis> chassis
 	}
 
 	braking_distance_ = (vehicle_speed_mps * vehicle_speed_mps) / (2 * braking_acceleration_);
+
+	if (log_)
+	{
+		if (chassis_log_file_.is_open() && chassis_log_file_.good())
+		{
+			chassis_log_file_ << vehicle_speed_mps << "\t" << braking_distance_ << std::endl;
+		}
+		else
+		{
+			AERROR << "Chassis log file object missing.";
+		}
+	}
 }
 
 void
