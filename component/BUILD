@@ -25,6 +25,9 @@ cc_library(
 		'-DMODULE_NAME=\\"safety_layer\\"',
 		"-Imodules/safety_layer/lib/depth_clustering/src/src",
 	],
+	linkopts = [
+        "-lboost_date_time",
+    ],
 	deps = [
 		"//cyber",
 		"//lgsvl_pkgs/lgsvl_msgs/proto:lgsvl_proto",
