@@ -41,7 +41,7 @@ LidarComponent::Init()
 		"/apollo/sensor/lidar128/compensator/PointCloud2");
 	depth_clustering_detection_writer_ = node_->CreateWriter<common::Detection3DArray>(
 		"/apollo/safety_layer/depth_clustering_detections");
-	depth_clustering_ = std::make_shared<DepthClustering>(10, 10000, 5, 10, 9, log_);
+	depth_clustering_ = std::make_shared<DepthClustering>(10, 10000, 7, 10, 5, log_);
 
 	depth_clustering_->init_apollo_box();
 
