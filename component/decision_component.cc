@@ -1,6 +1,7 @@
-#include <chrono>
 #include <ctime>
 #include <limits>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/date_time/posix_time/posix_time_io.hpp>
 
 #include "modules/safety_layer/component/decision_component.h"
 
@@ -158,10 +159,9 @@ DecisionComponent::ProcessChassis(const std::shared_ptr<canbus::Chassis> chassis
 	{
 		if (chassis_log_file_.is_open() && chassis_log_file_.good())
 		{
-			std::chrono::high_resolution_clock::time_point timestamp = std::chrono::high_resolution_clock::now();
-			std::time_t timestamp_t = std::chrono::high_resolution_clock::to_time_t(timestamp);
+			boost::posix_time::ptime timestamp = boost::posix_time::microsec_clock::universal_time();
 
-			chassis_log_file_ << std::ctime(&timestamp_t) << "\t" << frame_counter_ << "\t" << vehicle_speed_mps
+			chassis_log_file_ << to_simple_string(timestamp) << "\t" << frame_counter_ << "\t" << vehicle_speed_mps
 					<< "\t" << braking_distance_ << std::endl;
 		}
 		else
