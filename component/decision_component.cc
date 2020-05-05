@@ -132,7 +132,7 @@ DecisionComponent::ProcessDepthClusteringDetection(const
 
 		if (bounding_box_center.z() <= -2.2)
 		{
-                        continue;
+			continue;
 		}
 
 		double bounding_box_distance = CalculateBoundingBoxDistance(bounding_box_center, bounding_box_extent);
