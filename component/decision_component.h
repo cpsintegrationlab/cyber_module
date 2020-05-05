@@ -44,6 +44,8 @@ private:
 	std::shared_ptr<cyber::Reader<control::ControlCommand>> control_command_reader_;
 	std::shared_ptr<cyber::Writer<control::ControlCommand>> control_command_writer_;
 
+	bool cruise_;
+	double target_speed_mps_;
 	double braking_acceleration_;
 	double braking_distance_;
 	double braking_slack_;

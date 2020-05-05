@@ -8,8 +8,9 @@ namespace safety_layer
 {
 DecisionComponent::DecisionComponent() :
 		chassis_reader_(nullptr), depth_clustering_detection_reader_(nullptr), control_command_reader_(
-				nullptr), control_command_writer_(nullptr), braking_acceleration_(0.8 * 9.81), braking_distance_(
-				0.0), braking_slack_(10.0), override_(false), override_braking_percentage_(100.0)
+				nullptr), control_command_writer_(nullptr), cruise_(false), target_speed_mps_(
+				15.0), braking_acceleration_(0.8 * 9.81), braking_distance_(0.0), braking_slack_(
+				10.0), override_(false), override_braking_percentage_(100.0)
 {
 }
 
@@ -94,6 +95,11 @@ DecisionComponent::ProcessChassis(const std::shared_ptr<canbus::Chassis> chassis
 
 	float vehicle_speed_mps = chassis_message->speed_mps();
 
+	if (!cruise_ && vehicle_speed_mps >= target_speed_mps_)
+	{
+		cruise_ = true;
+	}
+
 	braking_distance_ = (vehicle_speed_mps * vehicle_speed_mps) / (2 * braking_acceleration_);
 }
 
@@ -155,8 +161,16 @@ DecisionComponent::ProcessControlCommand(const
 	}
 	else
 	{
-		control_command->set_throttle(20);
-		control_command->set_brake(0);
+		if (cruise_)
+		{
+			control_command->set_throttle(0);
+			control_command->set_brake(0);
+		}
+		else
+		{
+			control_command->set_throttle(30);
+			control_command->set_brake(0);
+		}
 	}
 
 	control_command_writer_->Write(control_command);
