@@ -8,6 +8,7 @@
 #include "lgsvl_pkgs/lgsvl_msgs/proto/detection3darray.pb.h"
 #include "modules/canbus/proto/chassis.pb.h"
 #include "modules/control/proto/control_cmd.pb.h"
+#include "modules/safety_layer/proto/frame.pb.h"
 
 namespace apollo
 {
@@ -30,6 +31,9 @@ public:
 private:
 
 	void
+	ProcessFrame(const std::shared_ptr<Frame> frame_message);
+
+	void
 	ProcessChassis(const std::shared_ptr<canbus::Chassis> chassis_message);
 
 	void
@@ -42,6 +46,7 @@ private:
 	double
 	CalculateBoundingBoxDistance(const Eigen::Vector3d& center, const Eigen::Vector3d& extent);
 
+	std::shared_ptr<cyber::Reader<Frame>> frame_reader_;
 	std::shared_ptr<cyber::Reader<canbus::Chassis>> chassis_reader_;
 	std::shared_ptr<cyber::Reader<common::Detection3DArray>> depth_clustering_detection_reader_;
 	std::shared_ptr<cyber::Reader<control::ControlCommand>> control_command_reader_;
@@ -58,6 +63,7 @@ private:
 
 	const std::string chassis_log_file_name_ = "/apollo/data/lidar/chassis.json";
 	std::ofstream chassis_log_file_;
+	unsigned long frame_counter_;
 	bool log_;
 };
 

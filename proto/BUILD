@@ -1,15 +1,15 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_proto_library(
-    name = "examples_cc_proto",
+    name = "safety_layer_proto",
     deps = [
-        ":examples_proto",
+        ":safety_layer_proto_lib",
     ],
 )
 
 proto_library(
-    name = "examples_proto",
+    name = "safety_layer_proto_lib",
     srcs = [
-        "examples.proto",
+        "frame.proto",
     ],
 )

@@ -1,3 +1,5 @@
+#include <chrono>
+#include <ctime>
 #include <limits>
 
 #include "modules/safety_layer/component/decision_component.h"
@@ -7,10 +9,11 @@ namespace apollo
 namespace safety_layer
 {
 DecisionComponent::DecisionComponent() :
-		chassis_reader_(nullptr), depth_clustering_detection_reader_(nullptr), control_command_reader_(
-				nullptr), control_command_writer_(nullptr), cruise_(false), target_speed_mps_(
-				5.0), braking_acceleration_(0.8 * 9.81), braking_distance_(0.0), braking_slack_(
-				10.0), override_(false), override_braking_percentage_(100.0), log_(false)
+		frame_reader_(nullptr), chassis_reader_(nullptr), depth_clustering_detection_reader_(
+				nullptr), control_command_reader_(nullptr), control_command_writer_(nullptr), cruise_(
+				false), target_speed_mps_(5.0), braking_acceleration_(0.8 * 9.81), braking_distance_(
+				0.0), braking_slack_(10.0), override_(false), override_braking_percentage_(
+				100.0), frame_counter_(0), log_(false)
 {
 }
 
@@ -22,6 +25,8 @@ DecisionComponent::~DecisionComponent()
 bool
 DecisionComponent::Init()
 {
+	frame_reader_ = node_->CreateReader<Frame>(
+		"/apollo/safety_layer/frame");
 	chassis_reader_ = node_->CreateReader<canbus::Chassis>(
 		"/apollo/canbus/chassis");
 	depth_clustering_detection_reader_ = node_->CreateReader<common::Detection3DArray>(
@@ -40,7 +45,7 @@ DecisionComponent::Init()
 			chassis_log_file_ << "Target Vehicle Speed (mps)\tBraking Slack (m)" << std::endl;
 			chassis_log_file_ << target_speed_mps_ << "\t" << braking_slack_ << std::endl;
 			chassis_log_file_ << std::endl;
-			chassis_log_file_ << "Vehicle Speed (mps)\tBraking Distance (m)" << std::endl;
+			chassis_log_file_ << "Timestamp\tFrame Counter\tVehicle Speed (mps)\tBraking Distance (m)" << std::endl;
 		}
 		else
 		{
@@ -54,6 +59,12 @@ DecisionComponent::Init()
 bool
 DecisionComponent::Proc()
 {
+	if (frame_reader_ == nullptr)
+	{
+		AERROR << "Frame reader missing.";
+		return false;
+	}
+
 	if (chassis_reader_ == nullptr)
 	{
 		AERROR << "Chassis reader missing.";
@@ -72,13 +83,24 @@ DecisionComponent::Proc()
 		return false;
 	}
 
+	frame_reader_->Observe();
 	chassis_reader_->Observe();
 	depth_clustering_detection_reader_->Observe();
 	control_command_reader_->Observe();
 
+	const auto& frame = frame_reader_->GetLatestObserved();
 	const auto& chassis = chassis_reader_->GetLatestObserved();
 	const auto& depth_clustering_detection = depth_clustering_detection_reader_->GetLatestObserved();
 	const auto& control_command = control_command_reader_->GetLatestObserved();
+
+	if (frame != nullptr)
+	{
+		ProcessFrame(frame);
+	}
+	else
+	{
+		AERROR << "Frame message missing.";
+	}
 
 	if (chassis != nullptr)
 	{
@@ -111,6 +133,14 @@ DecisionComponent::Proc()
 }
 
 void
+DecisionComponent::ProcessFrame(const std::shared_ptr<Frame> frame_message)
+{
+	AERROR << "Processing frame.";
+
+	frame_counter_ = frame_message->counter();
+}
+
+void
 DecisionComponent::ProcessChassis(const std::shared_ptr<canbus::Chassis> chassis_message)
 {
 	AERROR << "Processing chassis.";
@@ -128,7 +158,11 @@ DecisionComponent::ProcessChassis(const std::shared_ptr<canbus::Chassis> chassis
 	{
 		if (chassis_log_file_.is_open() && chassis_log_file_.good())
 		{
-			chassis_log_file_ << vehicle_speed_mps << "\t" << braking_distance_ << std::endl;
+			std::chrono::high_resolution_clock::time_point timestamp = std::chrono::high_resolution_clock::now();
+			std::time_t timestamp_t = std::chrono::high_resolution_clock::to_time_t(timestamp);
+
+			chassis_log_file_ << std::ctime(&timestamp_t) << "\t" << frame_counter_ << "\t" << vehicle_speed_mps
+					<< "\t" << braking_distance_ << std::endl;
 		}
 		else
 		{

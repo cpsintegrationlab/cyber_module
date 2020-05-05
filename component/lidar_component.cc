@@ -8,7 +8,8 @@ namespace apollo
 {
 namespace safety_layer
 {
-LidarComponent::LidarComponent() : point_cloud_reader_(nullptr), frame_counter_(0), log_(false)
+LidarComponent::LidarComponent() : ground_truth_3d_reader_(nullptr), point_cloud_reader_(nullptr), frame_writer_(
+		nullptr), depth_clustering_detection_writer_(nullptr), depth_clustering_(nullptr), frame_counter_(0), log_(false)
 {
 }
 
@@ -38,6 +39,8 @@ LidarComponent::Init()
 		"/apollo/perception/ground_truth/3d_detections");
 	point_cloud_reader_ = node_->CreateReader<drivers::PointCloud>(
 		"/apollo/sensor/lidar128/compensator/PointCloud2");
+	frame_writer_ = node_->CreateWriter<Frame>(
+		"/apollo/safety_layer/frame");
 	depth_clustering_detection_writer_ = node_->CreateWriter<common::Detection3DArray>(
 		"/apollo/safety_layer/depth_clustering_detections");
 	depth_clustering_ = std::make_shared<DepthClustering>(10, 10000, 7, 10, 5, log_);
@@ -77,19 +80,24 @@ LidarComponent::Proc()
 		AERROR << "Point cloud message missing.";
 	}
 
-	if (log_)
+	if (point_cloud != nullptr && ground_truth_3d != nullptr)
 	{
-		if (point_cloud != nullptr && ground_truth_3d != nullptr)
+		if (log_)
 		{
 			LogGroundTruth3D(ground_truth_3d);
 			LogPointCloud(point_cloud);
+		}
 
-			frame_counter_ ++;
-		}
-		else
-		{
-			AERROR << "Logging message missing.";
-		}
+		auto frame = std::make_shared<Frame>();
+
+		frame->set_counter(frame_counter_);
+		frame_writer_->Write(frame);
+
+		frame_counter_ ++;
+	}
+	else
+	{
+		AERROR << "Some messages missing.";
 	}
 
 	return true;

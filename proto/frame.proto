@@ -1,0 +1,7 @@
+syntax = "proto2";
+
+package apollo.safety_layer;
+
+message Frame {
+    optional uint64 counter = 1;
+};

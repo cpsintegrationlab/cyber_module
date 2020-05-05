@@ -31,6 +31,7 @@ cc_library(
 		"//modules/drivers/proto:sensor_proto",
 		"//modules/canbus/proto:canbus_proto",
 		"//modules/control/proto:control_proto",
+		"//modules/safety_layer/proto:safety_layer_proto",
 		"//modules/perception/camera/common:camera_frame",
 		"//modules/safety_layer:depth_clustering_lib",
 		"@eigen",
