@@ -208,6 +208,7 @@ DecisionComponent::ProcessDepthClusteringDetection(const
 		if (bounding_box_distance > braking_distance_ + restart_slack_ && override_ == true)
 		{
 			override_ = false;
+			cruise_ = false;
 			break;
 		}
 
@@ -237,7 +238,7 @@ DecisionComponent::ProcessControlCommand(const
 	{
 		if (cruise_)
 		{
-			control_command->set_throttle(0);
+			control_command->set_throttle(5);
 			control_command->set_brake(0);
 		}
 		else
