@@ -13,7 +13,7 @@ DecisionComponent::DecisionComponent() :
 		frame_reader_(nullptr), chassis_reader_(nullptr), depth_clustering_detection_reader_(
 				nullptr), control_command_reader_(nullptr), control_command_writer_(nullptr), cruise_(
 				false), target_speed_mps_(5.0), braking_acceleration_(0.8 * 9.81), braking_distance_(
-				0.0), braking_slack_(10.0), override_(false), override_braking_percentage_(
+				0.0), braking_slack_(10.0), override_(false), restart_slack_(15.0), override_braking_percentage_(
 				100.0), frame_counter_(0), log_(false)
 {
 }
@@ -205,7 +205,13 @@ DecisionComponent::ProcessDepthClusteringDetection(const
 
 		double bounding_box_distance = CalculateBoundingBoxDistance(bounding_box_center, bounding_box_extent);
 
-		if (bounding_box_distance < braking_distance_ + braking_slack_)
+		if (bounding_box_distance > braking_distance_ + restart_slack_ && override_ == true)
+		{
+			override_ = false;
+			break;
+		}
+
+		if (bounding_box_distance < braking_distance_ + braking_slack_ && override_ == false)
 		{
 			override_ = true;
 			break;

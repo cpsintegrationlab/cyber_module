@@ -57,6 +57,7 @@ private:
 	double braking_acceleration_;
 	double braking_distance_;
 	double braking_slack_;
+	double restart_slack_;
 
 	bool override_;
 	double override_braking_percentage_;
