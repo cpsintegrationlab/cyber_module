@@ -23,20 +23,19 @@ cc_library(
 	],
 	copts = [
 		'-DMODULE_NAME=\\"safety_layer\\"',
-		"-Imodules/safety_layer/lib/depth_clustering/src/src",
 	],
 	linkopts = [
-        "-lboost_date_time",
-    ],
+		"-lboost_date_time",
+	],
 	deps = [
 		"//cyber",
 		"//lgsvl_pkgs/lgsvl_msgs/proto:lgsvl_proto",
 		"//modules/drivers/proto:sensor_proto",
 		"//modules/canbus/proto:canbus_proto",
 		"//modules/control/proto:control_proto",
-		"//modules/safety_layer/proto:safety_layer_proto",
 		"//modules/perception/camera/common:camera_frame",
-		"//modules/safety_layer:depth_clustering_lib",
+		"//modules/safety_layer/lib:depth_clustering_lib",
+		"//modules/safety_layer/proto:safety_layer_proto",
 		"@eigen",
 	],
 )
