@@ -28,24 +28,27 @@ LidarComponent::~LidarComponent()
 
 		ground_truth_3d_log_file_.close();
 	}
-
-	depth_clustering_->finish();
 }
 
 bool
 LidarComponent::Init()
 {
-	ground_truth_3d_reader_ = node_->CreateReader<common::Detection3DArray>(
+	ground_truth_3d_reader_ = node_->CreateReader<perception::PerceptionObstacles>(
 		"/apollo/perception/ground_truth/3d_detections");
 	point_cloud_reader_ = node_->CreateReader<drivers::PointCloud>(
 		"/apollo/sensor/lidar128/compensator/PointCloud2");
 	frame_writer_ = node_->CreateWriter<Frame>(
 		"/apollo/safety_layer/frame");
-	depth_clustering_detection_writer_ = node_->CreateWriter<common::Detection3DArray>(
+	depth_clustering_detection_writer_ = node_->CreateWriter<perception::PerceptionObstacles>(
 		"/apollo/safety_layer/depth_clustering_detections");
-	depth_clustering_ = std::make_shared<DepthClustering>(10, 10000, 7, 10, 5, log_);
+	depth_clustering_ = std::make_shared<depth_clustering::DepthClustering>();
 
-	depth_clustering_->init_apollo_box();
+	if (!depth_clustering_->initializeForApollo("/apollo/modules/safety_layer/conf/depth_clustering_config.json",
+		"/apollo/data/log"))
+	{
+		AERROR << "Failed to initialize Depth Clustering.";
+		return false;
+	}
 
 	return true;
 }
@@ -105,7 +108,7 @@ LidarComponent::Proc()
 
 void
 LidarComponent::ProcessGroundTruth3D(const
-	std::shared_ptr<common::Detection3DArray> ground_truth_3d_message)
+	std::shared_ptr<perception::PerceptionObstacles> ground_truth_3d_message)
 {
 	AERROR << "Processing 3D ground truth.";
 }
@@ -138,74 +141,119 @@ LidarComponent::ProcessPointCloud(const
 	}
 
 	std::string cloud_file_name = "frame_" + std::to_string(frame_counter_) + ".bin";
-	output_box_frame = depth_clustering_->process_apollo_box(cloud_file_name, point_cloud);
+	depth_clustering_->processOneFrameForApollo(cloud_file_name, point_cloud);
 
-	auto detection_3d_array = std::make_shared<common::Detection3DArray>();
+	auto bounding_box = depth_clustering_->getBoundingBox();
 
-	for (const auto& output_box : output_box_frame)
+	switch (depth_clustering_->getParameter().bounding_box_type)
 	{
-		common::Detection3D detection_3d;
+	case depth_clustering::BoundingBox::Type::Cube:
+	{
+		auto perception_obstacles = std::make_shared<perception::PerceptionObstacles>();
+		auto bounding_box_frame_cube = bounding_box->getFrameCube();
 
-		detection_3d.mutable_bbox()->mutable_position()->mutable_position()->set_x(output_box.first.x());
-		detection_3d.mutable_bbox()->mutable_position()->mutable_position()->set_y(output_box.first.y());
-		detection_3d.mutable_bbox()->mutable_position()->mutable_position()->set_z(output_box.first.z());
-		detection_3d.mutable_bbox()->mutable_size()->set_x(output_box.second.x());
-		detection_3d.mutable_bbox()->mutable_size()->set_y(output_box.second.y());
-		detection_3d.mutable_bbox()->mutable_size()->set_z(output_box.second.z());
+		for (const auto& bounding_box_cube : *bounding_box_frame_cube)
+		{
+			perception::PerceptionObstacle perception_obstacle;
 
-		detection_3d_array->add_detections()->CopyFrom(detection_3d);
+			auto bounding_box_cube_center = std::get<0>(bounding_box_cube);
+			auto bounding_box_cube_extent = std::get<1>(bounding_box_cube);
+			auto bounding_box_cube_rotation = std::get<2>(bounding_box_cube);
+
+			perception_obstacle.mutable_position()->set_x(bounding_box_cube_center.x());
+			perception_obstacle.mutable_position()->set_y(bounding_box_cube_center.y());
+			perception_obstacle.mutable_position()->set_z(bounding_box_cube_center.z());
+			perception_obstacle.set_length(bounding_box_cube_extent.x());
+			perception_obstacle.set_width(bounding_box_cube_extent.y());
+			perception_obstacle.set_height(bounding_box_cube_extent.z());
+			perception_obstacle.set_theta(bounding_box_cube_rotation);
+
+			perception_obstacles->add_perception_obstacle()->CopyFrom(perception_obstacle);
+		}
+
+		depth_clustering_detection_writer_->Write(perception_obstacles);
+
+		break;
 	}
+	case depth_clustering::BoundingBox::Type::Polygon:
+	{
+		auto perception_obstacles = std::make_shared<perception::PerceptionObstacles>();
+		auto bounding_box_frame_polygon = bounding_box->getFramePolygon();
 
-	depth_clustering_detection_writer_->Write(detection_3d_array);
+		for (const auto& bounding_box_polygon : *bounding_box_frame_polygon)
+		{
+			perception::PerceptionObstacle perception_obstacle;
+
+			auto bounding_box_polygon_hull = std::get<0>(bounding_box_polygon);
+			auto bounding_box_polygon_height = std::get<1>(bounding_box_polygon);
+
+			for (const auto& bounding_box_polygon_hull_point : bounding_box_polygon_hull)
+			{
+				common::Point3D polygon_point;
+
+				polygon_point.set_x(bounding_box_polygon_hull_point.x());
+				polygon_point.set_y(bounding_box_polygon_hull_point.y());
+				polygon_point.set_z(bounding_box_polygon_hull_point.z());
+
+				perception_obstacle.add_polygon_point()->CopyFrom(polygon_point);
+			}
+
+			perception_obstacle.set_height(bounding_box_polygon_height);
+
+			perception_obstacles->add_perception_obstacle()->CopyFrom(perception_obstacle);
+		}
+
+		depth_clustering_detection_writer_->Write(perception_obstacles);
+
+		break;
+	}
+	case depth_clustering::BoundingBox::Type::Flat:
+	{
+		break;
+	}
+	default:
+	{
+		break;
+	}
+	}
 }
 
 void
 LidarComponent::LogGroundTruth3D(const
-	std::shared_ptr<common::Detection3DArray> ground_truth_3d_message)
+	std::shared_ptr<perception::PerceptionObstacles> ground_truth_3d_message)
 {
 	AERROR << "Logging 3D ground truth.";
 
 	std::string cloud_file_name = "frame_" + std::to_string(frame_counter_) + ".bin";
 	boost::property_tree::ptree cloud_file_array;
 
-	for (const auto& detection : ground_truth_3d_message->detections())
+	for (const auto& perception_obstacle : ground_truth_3d_message->perception_obstacle())
 	{
 		boost::property_tree::ptree cloud_object_array_value;
 		boost::property_tree::ptree cloud_object_array;
 
-		const auto& bounding_box = detection.bbox();
-
-		cloud_object_array_value.put_value(bounding_box.position().position().x());
+		cloud_object_array_value.put_value(perception_obstacle.position().x());
 		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
 
-		cloud_object_array_value.put_value(bounding_box.position().position().y());
+		cloud_object_array_value.put_value(perception_obstacle.position().y());
 		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
 
-		cloud_object_array_value.put_value(bounding_box.position().position().z());
+		cloud_object_array_value.put_value(perception_obstacle.position().z());
 		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
 
-		cloud_object_array_value.put_value(bounding_box.size().x());
+		cloud_object_array_value.put_value(perception_obstacle.length());
 		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
 
-		cloud_object_array_value.put_value(bounding_box.size().y());
+		cloud_object_array_value.put_value(perception_obstacle.width());
 		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
 
-		cloud_object_array_value.put_value(bounding_box.size().z());
+		cloud_object_array_value.put_value(perception_obstacle.height());
 		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
 
-		cloud_object_array_value.put_value(bounding_box.position().orientation().qw());
+		cloud_object_array_value.put_value(perception_obstacle.theta());
 		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
 
-		cloud_object_array_value.put_value(bounding_box.position().orientation().qx());
-		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
-
-		cloud_object_array_value.put_value(bounding_box.position().orientation().qy());
-		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
-
-		cloud_object_array_value.put_value(bounding_box.position().orientation().qz());
-		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
-
-		cloud_object_array_value.put_value(detection.label());
+		cloud_object_array_value.put_value(perception_obstacle.type());
 		cloud_object_array.push_back(std::make_pair("", cloud_object_array_value));
 
 		cloud_file_array.push_back(std::make_pair("", cloud_object_array));

@@ -29,13 +29,13 @@ cc_library(
 	],
 	deps = [
 		"//cyber",
-		"//lgsvl_pkgs/lgsvl_msgs/proto:lgsvl_proto",
 		"//modules/drivers/proto:sensor_proto",
 		"//modules/canbus/proto:canbus_proto",
 		"//modules/control/proto:control_proto",
+		"//modules/perception/proto:perception_proto",
+		"//modules/safety_layer/proto:safety_layer_proto",
 		"//modules/perception/camera/common:camera_frame",
 		"//modules/safety_layer/lib:depth_clustering_lib",
-		"//modules/safety_layer/proto:safety_layer_proto",
 		"@eigen",
 	],
 )

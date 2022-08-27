@@ -5,9 +5,9 @@
 #include "cyber/class_loader/class_loader.h"
 #include "cyber/component/component.h"
 #include "cyber/component/timer_component.h"
-#include "lgsvl_pkgs/lgsvl_msgs/proto/detection3darray.pb.h"
 #include "modules/canbus/proto/chassis.pb.h"
 #include "modules/control/proto/control_cmd.pb.h"
+#include "modules/perception/proto/perception_obstacle.pb.h"
 #include "modules/safety_layer/proto/frame.pb.h"
 
 namespace apollo
@@ -38,7 +38,7 @@ private:
 
 	void
 	ProcessDepthClusteringDetection(
-			const std::shared_ptr<common::Detection3DArray> depth_clustering_detection_message);
+			const std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detection_message);
 
 	void
 	ProcessControlCommand(const std::shared_ptr<control::ControlCommand> control_command_message);
@@ -48,11 +48,10 @@ private:
 
 	std::shared_ptr<cyber::Reader<Frame>> frame_reader_;
 	std::shared_ptr<cyber::Reader<canbus::Chassis>> chassis_reader_;
-	std::shared_ptr<cyber::Reader<common::Detection3DArray>> depth_clustering_detection_reader_;
+	std::shared_ptr<cyber::Reader<perception::PerceptionObstacles>> depth_clustering_detection_reader_;
 	std::shared_ptr<cyber::Reader<control::ControlCommand>> control_command_reader_;
 	std::shared_ptr<cyber::Writer<control::ControlCommand>> control_command_writer_;
 
-	bool cruise_;
 	double target_speed_mps_;
 	double braking_acceleration_;
 	double braking_distance_;
@@ -62,7 +61,7 @@ private:
 	bool override_;
 	double override_braking_percentage_;
 
-	const std::string chassis_log_file_name_ = "/apollo/data/lidar/chassis.json";
+	const std::string chassis_log_file_name_ = "/apollo/data/log/safety_layer.chassis.json";
 	std::ofstream chassis_log_file_;
 	unsigned long frame_counter_;
 	bool log_;
