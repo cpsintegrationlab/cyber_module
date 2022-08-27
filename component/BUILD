@@ -4,20 +4,18 @@ package(default_visibility = ["//visibility:public"])
 
 cc_binary(
 	name = "libsafety_layer_component.so",
+	deps = [":safety_layer_component_lib"],
 	linkshared = True,
 	linkstatic = False,
-	deps = [":safety_layer_component_lib"],
 )
 
 cc_library(
 	name = "safety_layer_component_lib",
 	srcs = [
-		"depth_camera_component.cc",
 		"lidar_component.cc",
 		"decision_component.cc",
 	],
 	hdrs = [
-		"depth_camera_component.h",
 		"lidar_component.h",
 		"decision_component.h",
 	],
