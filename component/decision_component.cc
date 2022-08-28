@@ -15,7 +15,7 @@ DecisionComponent::DecisionComponent() :
 	"/apollo/safety_layer/decision/control"),
 	override_(false), chassis_speed_mps_(0), control_command_brake_(
 	100), depth_clustering_config_file_name_(
-	"/apollo/modules/safety_layer/conf/depth_clustering_config.json")
+	"/apollo/modules/safety_layer/conf/depth_clustering.json")
 {
 }
 

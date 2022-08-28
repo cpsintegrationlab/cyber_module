@@ -8,7 +8,7 @@ LidarComponent::LidarComponent() : reader_point_cloud_(
 	nullptr), writer_depth_clustering_detections_(nullptr), reader_point_cloud_channel_name_(
 	"/apollo/sensor/lidar128/compensator/PointCloud2"), writer_depth_clustering_detections_channel_name_(
 	"/apollo/safety_layer/lidar/depth_clustering/detections"), depth_clustering_(nullptr), depth_clustering_config_file_name_(
-	"/apollo/modules/safety_layer/conf/depth_clustering_config.json"), depth_clustering_log_directory_(
+	"/apollo/modules/safety_layer/conf/depth_clustering.json"), depth_clustering_log_directory_(
 	"/apollo/data/log")
 {
 }
