@@ -12,27 +12,28 @@ cc_binary(
 cc_library(
 	name = "safety_layer_component_lib",
 	srcs = [
-		"lidar_component.cc",
 		"decision_component.cc",
+		"lidar_component.cc",
+		"logging_component.cc",
 	],
 	hdrs = [
-		"lidar_component.h",
 		"decision_component.h",
+		"lidar_component.h",
+		"logging_component.h",
 	],
 	copts = [
 		'-DMODULE_NAME=\\"safety_layer\\"',
 	],
 	linkopts = [
 		"-lboost_date_time",
+		"-lboost_filesystem",
 	],
 	deps = [
 		"//cyber",
-		"//modules/drivers/proto:sensor_proto",
 		"//modules/canbus/proto:canbus_proto",
 		"//modules/control/proto:control_proto",
 		"//modules/perception/proto:perception_proto",
-		"//modules/safety_layer/proto:safety_layer_proto",
-		"//modules/perception/camera/common:camera_frame",
+		"//modules/drivers/proto:sensor_proto",
 		"//modules/safety_layer/lib:depth_clustering_lib",
 		"@eigen",
 	],
