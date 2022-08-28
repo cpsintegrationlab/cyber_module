@@ -46,6 +46,11 @@ LidarComponent::Init()
 			AERROR << "Failed to initialize Depth Clustering.";
 			return false;
 		}
+
+		if (FLAGS_minloglevel > 0)
+		{
+			depth_clustering_->disableConsoleLogging();
+		}
 	}
 	else
 	{

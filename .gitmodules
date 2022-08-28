@@ -1,4 +1,4 @@
 [submodule "depth_clustering"]
 	path = lib/depth_clustering
 	url = ../depth_clustering.git
-	branch = 2.10.0
+	branch = 2.10.1
