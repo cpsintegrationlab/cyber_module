@@ -28,7 +28,7 @@ public:
 private:
 
 	void
-	ProcessPointCloud(const std::shared_ptr<drivers::PointCloud> message);
+	ProcessPointCloud(const std::shared_ptr<drivers::PointCloud> point_cloud);
 
 	void
 	writeCyberDepthClusteringDetectionsCube(

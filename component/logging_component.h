@@ -36,13 +36,13 @@ private:
 	createLogFileChassis();
 
 	void
-	LogChassis(const std::shared_ptr<canbus::Chassis> message);
+	LogChassis(const std::shared_ptr<canbus::Chassis> chassis);
 
 	void
-	LogGroundTruth3D(const std::shared_ptr<perception::PerceptionObstacles> message);
+	LogGroundTruth3D(const std::shared_ptr<perception::PerceptionObstacles> ground_truth_3d);
 
 	void
-	LogPointCloud(const std::shared_ptr<drivers::PointCloud> message);
+	LogPointCloud(const std::shared_ptr<drivers::PointCloud> point_cloud);
 
     void
 	writeLogGroundTruth3D();

@@ -73,11 +73,11 @@ LidarComponent::Proc()
 
 void
 LidarComponent::ProcessPointCloud(const
-	std::shared_ptr<drivers::PointCloud> message)
+	std::shared_ptr<drivers::PointCloud> point_cloud)
 {
-	if (!message)
+	if (!point_cloud)
 	{
-		AERROR << "Point cloud message missing.";
+		AERROR << "Point cloud missing.";
         return;
 	}
 
@@ -89,13 +89,13 @@ LidarComponent::ProcessPointCloud(const
 
 	AINFO << "Processing point cloud.";
 
-	const std::string sequence_num = std::to_string(message->header().sequence_num());
+	const std::string sequence_num = std::to_string(point_cloud->header().sequence_num());
 	const std::string frame_name = sequence_num + ".bin";
-	std::vector<Eigen::Vector3f> point_cloud;
+	std::vector<Eigen::Vector3f> point_cloud_eigen;
 
-	for (int i = 0; i < message->point_size(); i ++)
+	for (int i = 0; i < point_cloud->point_size(); i ++)
 	{
-		const auto& point = message->point(i);
+		const auto& point = point_cloud->point(i);
 
 		if (std::isnan(point.x()) || std::isnan(point.y()) || std::isnan(point.z()))
 		{
@@ -108,10 +108,10 @@ LidarComponent::ProcessPointCloud(const
 		point_eigen.y() = point.y();
 		point_eigen.z() = point.z();
 
-		point_cloud.push_back(point_eigen);
+		point_cloud_eigen.push_back(point_eigen);
 	}
 
-	depth_clustering_->processOneFrameForApollo(frame_name, point_cloud);
+	depth_clustering_->processOneFrameForApollo(frame_name, point_cloud_eigen);
 
 	const auto bounding_box = depth_clustering_->getBoundingBox();
 	const auto& bounding_box_type = depth_clustering_->getParameter().bounding_box_type;

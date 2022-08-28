@@ -29,26 +29,26 @@ public:
 private:
 
 	void
-	ProcessChassis(const std::shared_ptr<canbus::Chassis> message);
+	ProcessChassis(const std::shared_ptr<canbus::Chassis> chassis);
 
 	void
-	ProcessControlCommand(const std::shared_ptr<control::ControlCommand> message);
+	ProcessControlCommand(const std::shared_ptr<control::ControlCommand> control_command);
 
 	void
 	ProcessDepthClusteringDetections(
-		const std::shared_ptr<perception::PerceptionObstacles> message);
+		const std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detections);
 
 	void
 	ProcessDepthClusteringDetectionsCube(
-		const std::shared_ptr<perception::PerceptionObstacles> message);
+		const std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detections);
 
 	void
 	ProcessDepthClusteringDetectionsPolygon(
-		const std::shared_ptr<perception::PerceptionObstacles> message);
+		const std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detections);
 
 	void
 	ProcessDepthClusteringDetectionsFlat(
-		const std::shared_ptr<perception::PerceptionObstacles> message);
+		const std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detections);
 
 	std::shared_ptr<cyber::Reader<canbus::Chassis>> reader_chassis_;
 	std::shared_ptr<cyber::Reader<control::ControlCommand>> reader_control_command_;

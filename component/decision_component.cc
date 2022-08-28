@@ -98,26 +98,26 @@ DecisionComponent::Proc()
 }
 
 void
-DecisionComponent::ProcessChassis(const std::shared_ptr<canbus::Chassis> message)
+DecisionComponent::ProcessChassis(const std::shared_ptr<canbus::Chassis> chassis)
 {
-	if (!message)
+	if (!chassis)
 	{
-		AERROR << "Chassis message missing.";
+		AERROR << "Chassis missing.";
         return;
 	}
 
 	AINFO << "Processing chassis.";
 
-	chassis_speed_mps_ = message->speed_mps();
+	chassis_speed_mps_ = chassis->speed_mps();
 }
 
 void
 DecisionComponent::ProcessControlCommand(const
-	std::shared_ptr<control::ControlCommand> message)
+	std::shared_ptr<control::ControlCommand> control_command)
 {
-	if (!message)
+	if (!control_command)
 	{
-		AERROR << "Control command message missing.";
+		AERROR << "Control command missing.";
         return;
 	}
 
@@ -129,25 +129,25 @@ DecisionComponent::ProcessControlCommand(const
 
 	AINFO << "Processing control command.";
 
-	auto control_command = std::make_shared<control::ControlCommand>(*message);
+	auto control_command_override = std::make_shared<control::ControlCommand>(*control_command);
 
 	if (override_)
 	{
-		control_command->set_throttle(0);
-		control_command->set_brake(control_command_brake_);
+		control_command_override->set_throttle(0);
+		control_command_override->set_brake(control_command_brake_);
 		AWARN << "Activated safety override.";
 	}
 
-	writer_control_command_->Write(control_command);
+	writer_control_command_->Write(control_command_override);
 }
 
 void
 DecisionComponent::ProcessDepthClusteringDetections(const
-	std::shared_ptr<perception::PerceptionObstacles> message)
+	std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detections)
 {
-	if (!message)
+	if (!depth_clustering_detections)
 	{
-		AERROR << "Depth Clustering detections message missing.";
+		AERROR << "Depth Clustering detections missing.";
         return;
 	}
 
@@ -163,26 +163,26 @@ DecisionComponent::ProcessDepthClusteringDetections(const
 	case depth_clustering::BoundingBox::Type::Cube:
 	{
 		AINFO << "Processing Depth Clustering cube detections.";
-		ProcessDepthClusteringDetectionsCube(message);
+		ProcessDepthClusteringDetectionsCube(depth_clustering_detections);
 		break;
 	}
 	case depth_clustering::BoundingBox::Type::Polygon:
 	{
 		AINFO << "Processing Depth Clustering polygon detections.";
-		ProcessDepthClusteringDetectionsPolygon(message);
+		ProcessDepthClusteringDetectionsPolygon(depth_clustering_detections);
 		break;
 	}
 	case depth_clustering::BoundingBox::Type::Flat:
 	{
 		AINFO << "Processing Depth Clustering flat detections.";
-		ProcessDepthClusteringDetectionsFlat(message);
+		ProcessDepthClusteringDetectionsFlat(depth_clustering_detections);
 		break;
 	}
 	default:
 	{
 		AWARN << "Unknown bounding box type " << static_cast<int>(bounding_box_type) << ".";
 		AINFO << "Processing Depth Clustering cube detections.";
-		ProcessDepthClusteringDetectionsCube(message);
+		ProcessDepthClusteringDetectionsCube(depth_clustering_detections);
 		break;
 	}
 	}
@@ -190,11 +190,11 @@ DecisionComponent::ProcessDepthClusteringDetections(const
 
 void
 DecisionComponent::ProcessDepthClusteringDetectionsCube(
-	const std::shared_ptr<perception::PerceptionObstacles> message)
+	const std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detections)
 {
-	if (!message)
+	if (!depth_clustering_detections)
 	{
-		AERROR << "Depth Clustering detections message missing.";
+		AERROR << "Depth Clustering detections missing.";
         return;
 	}
 
@@ -204,11 +204,11 @@ DecisionComponent::ProcessDepthClusteringDetectionsCube(
 
 void
 DecisionComponent::ProcessDepthClusteringDetectionsPolygon(
-	const std::shared_ptr<perception::PerceptionObstacles> message)
+	const std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detections)
 {
-	if (!message)
+	if (!depth_clustering_detections)
 	{
-		AERROR << "Depth Clustering detections message missing.";
+		AERROR << "Depth Clustering detections missing.";
         return;
 	}
 
@@ -218,11 +218,11 @@ DecisionComponent::ProcessDepthClusteringDetectionsPolygon(
 
 void
 DecisionComponent::ProcessDepthClusteringDetectionsFlat(
-	const std::shared_ptr<perception::PerceptionObstacles> message)
+	const std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detections)
 {
-	if (!message)
+	if (!depth_clustering_detections)
 	{
-		AERROR << "Depth Clustering detections message missing.";
+		AERROR << "Depth Clustering detections missing.";
         return;
 	}
 

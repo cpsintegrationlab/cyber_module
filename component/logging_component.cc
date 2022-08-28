@@ -160,23 +160,23 @@ LoggingComponent::createLogFileChassis()
 }
 
 void
-LoggingComponent::LogChassis(const std::shared_ptr<canbus::Chassis> message)
+LoggingComponent::LogChassis(const std::shared_ptr<canbus::Chassis> chassis)
 {
     if (!log_)
     {
         return;
     }
 
-    if (!message)
+    if (!chassis)
 	{
-		AERROR << "Chassis message missing.";
+		AERROR << "Chassis missing.";
         return;
 	}
 
 	AINFO << "Logging chassis.";
 
-    const unsigned& sequence_num = message->header().sequence_num();
-    const float& speed_mps = message->speed_mps();
+    const unsigned& sequence_num = chassis->header().sequence_num();
+    const float& speed_mps = chassis->speed_mps();
 
     if (log_file_chassis_.is_open() && log_file_chassis_.good())
     {
@@ -190,25 +190,25 @@ LoggingComponent::LogChassis(const std::shared_ptr<canbus::Chassis> message)
 
 void
 LoggingComponent::LogGroundTruth3D(const
-	std::shared_ptr<perception::PerceptionObstacles> message)
+	std::shared_ptr<perception::PerceptionObstacles> ground_truth_3d)
 {
     if (!log_)
     {
         return;
     }
 
-    if (!message)
+    if (!ground_truth_3d)
 	{
-		AERROR << "3D ground truth message missing.";
+		AERROR << "3D ground truth missing.";
         return;
 	}
 
 	AINFO << "Logging 3D ground truth.";
 
-    const std::string sequence_num = std::to_string(message->header().sequence_num());
+    const std::string sequence_num = std::to_string(ground_truth_3d->header().sequence_num());
 	boost::property_tree::ptree log_file_tree_perception_obstacles;
 
-	for (const auto& perception_obstacle : message->perception_obstacle())
+	for (const auto& perception_obstacle : ground_truth_3d->perception_obstacle())
 	{
 		boost::property_tree::ptree log_file_tree_perception_obstacle;
 		boost::property_tree::ptree log_file_tree_perception_obstacle_entry;
@@ -246,16 +246,16 @@ LoggingComponent::LogGroundTruth3D(const
 
 void
 LoggingComponent::LogPointCloud(const
-	std::shared_ptr<drivers::PointCloud> message)
+	std::shared_ptr<drivers::PointCloud> point_cloud)
 {
     if (!log_)
     {
         return;
     }
 
-    if (!message)
+    if (!point_cloud)
 	{
-		AERROR << "Point cloud message missing.";
+		AERROR << "Point cloud missing.";
         return;
 	}
 
@@ -267,7 +267,7 @@ LoggingComponent::LogPointCloud(const
         return;
     }
 
-    const std::string sequence_num = std::to_string(message->header().sequence_num());
+    const std::string sequence_num = std::to_string(point_cloud->header().sequence_num());
 	const std::string log_file_name = log_directory_name_point_cloud_ + "/" + sequence_num + ".bin";
 	std::fstream log_file(log_file_name, std::ios::out | std::fstream::trunc | std::ios::binary);
 
@@ -279,9 +279,9 @@ LoggingComponent::LogPointCloud(const
 
     log_file.seekg(0, std::ios::beg);
 
-    for (int i = 0; i < message->point_size(); i ++)
+    for (int i = 0; i < point_cloud->point_size(); i ++)
     {
-        const auto& point = message->point(i);
+        const auto& point = point_cloud->point(i);
 
         if (std::isnan(point.x()) || std::isnan(point.y()) || std::isnan(point.z()))
         {
