@@ -1,58 +1,61 @@
-#include <ctime>
-#include <limits>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/date_time/posix_time/posix_time_io.hpp>
-
-#include "modules/safety_layer/component/decision_component.h"
 #include "modules/safety_layer/lib/depth_clustering/src/depth_clustering/api/api.h"
+#include "modules/safety_layer/component/decision_component.h"
 
 namespace apollo
 {
 namespace safety_layer
 {
 DecisionComponent::DecisionComponent() :
-		frame_reader_(nullptr), chassis_reader_(nullptr), depth_clustering_detection_reader_(
-				nullptr), control_command_reader_(nullptr), control_command_writer_(nullptr), target_speed_mps_(
-				15.0), braking_acceleration_(0.8 * 9.81), braking_distance_(0.0), braking_slack_(
-				10.0), restart_slack_(15.0), override_(false), override_braking_percentage_(
-				100.0), frame_counter_(0), log_(false)
+	reader_chassis_(nullptr), reader_control_command_(
+	nullptr), reader_depth_clustering_detections_(nullptr), writer_control_command_(
+	nullptr), channel_name_reader_chassis_(
+	"/apollo/canbus/chassis"), channel_name_reader_control_command_(
+	"/apollo/control"), channel_name_reader_depth_clustering_detections_(
+	"/apollo/safety_layer/lidar/depth_clustering/detections"), channel_name_writer_control_command_(
+	"/apollo/safety_layer/decision/control"),
+	override_(false), chassis_speed_mps_(0), control_command_brake_(
+	100), depth_clustering_config_file_name_(
+	"/apollo/modules/safety_layer/conf/depth_clustering_config.json")
 {
 }
 
 DecisionComponent::~DecisionComponent()
 {
-	chassis_log_file_.close();
 }
 
 bool
 DecisionComponent::Init()
 {
-	frame_reader_ = node_->CreateReader<Frame>(
-		"/apollo/safety_layer/frame");
-	chassis_reader_ = node_->CreateReader<canbus::Chassis>(
-		"/apollo/canbus/chassis");
-	depth_clustering_detection_reader_ = node_->CreateReader<perception::PerceptionObstacles>(
-		"/apollo/safety_layer/depth_clustering_detections");
-	control_command_reader_ = node_->CreateReader<control::ControlCommand>(
-		"/apollo/control");
-	control_command_writer_ = node_->CreateWriter<control::ControlCommand>(
-		"/apollo/safety_layer/control");
+	reader_chassis_ = node_->CreateReader<canbus::Chassis>(
+		channel_name_reader_chassis_);
 
-	if (log_)
+    if (!reader_chassis_)
 	{
-		chassis_log_file_.open(chassis_log_file_name_, std::fstream::out | std::fstream::trunc);
+		AWARN << "Failed to create chassis reader.";
+	}
 
-		if (chassis_log_file_.is_open() && chassis_log_file_.good())
-		{
-			chassis_log_file_ << "Target Vehicle Speed (mps)\tBraking Slack (m)" << std::endl;
-			chassis_log_file_ << target_speed_mps_ << "\t" << braking_slack_ << std::endl;
-			chassis_log_file_ << std::endl;
-			chassis_log_file_ << "Timestamp\tFrame Counter\tVehicle Speed (mps)\tBraking Distance (m)" << std::endl;
-		}
-		else
-		{
-			AERROR << "Failed to open chassis log file.";
-		}
+	reader_control_command_ = node_->CreateReader<control::ControlCommand>(
+		channel_name_reader_control_command_);
+
+	if (!reader_control_command_)
+	{
+		AWARN << "Failed to create control command reader.";
+	}
+
+	reader_depth_clustering_detections_ = node_->CreateReader<perception::PerceptionObstacles>(
+		channel_name_reader_depth_clustering_detections_);
+
+	if (!reader_depth_clustering_detections_)
+	{
+		AWARN << "Failed to create Depth Clustering detections reader.";
+	}
+
+	writer_control_command_ = node_->CreateWriter<control::ControlCommand>(
+		channel_name_writer_control_command_);
+
+	if (!writer_control_command_)
+	{
+		AWARN << "Failed to create control command writer.";
 	}
 
 	return true;
@@ -61,260 +64,170 @@ DecisionComponent::Init()
 bool
 DecisionComponent::Proc()
 {
-	if (frame_reader_ == nullptr)
+	if (reader_chassis_)
+    {
+		reader_chassis_->Observe();
+		ProcessChassis(reader_chassis_->GetLatestObserved());
+    }
+    else
 	{
-		AERROR << "Frame reader missing.";
-		return false;
+		AWARN << "Chassis reader missing.";
 	}
 
-	if (chassis_reader_ == nullptr)
+	if (reader_depth_clustering_detections_)
+    {
+		reader_depth_clustering_detections_->Observe();
+		ProcessDepthClusteringDetections(reader_depth_clustering_detections_->GetLatestObserved());
+    }
+    else
 	{
-		AERROR << "Chassis reader missing.";
-		return false;
+		AWARN << "Depth Clustering detections reader missing.";
 	}
 
-	if (depth_clustering_detection_reader_ == nullptr)
+	if (reader_control_command_)
+    {
+		reader_control_command_->Observe();
+		ProcessControlCommand(reader_control_command_->GetLatestObserved());
+    }
+    else
 	{
-		AERROR << "Depth clustering detection reader missing.";
-		return false;
-	}
-
-	if (control_command_reader_ == nullptr)
-	{
-		AERROR << "Control command reader missing.";
-		return false;
-	}
-
-	frame_reader_->Observe();
-	chassis_reader_->Observe();
-	depth_clustering_detection_reader_->Observe();
-	control_command_reader_->Observe();
-
-	const auto& frame = frame_reader_->GetLatestObserved();
-	const auto& chassis = chassis_reader_->GetLatestObserved();
-	const auto& depth_clustering_detection = depth_clustering_detection_reader_->GetLatestObserved();
-	const auto& control_command = control_command_reader_->GetLatestObserved();
-
-	if (frame != nullptr)
-	{
-		ProcessFrame(frame);
-	}
-	else
-	{
-		AERROR << "Frame message missing.";
-	}
-
-	if (chassis != nullptr)
-	{
-		ProcessChassis(chassis);
-	}
-	else
-	{
-		AERROR << "Chassis message missing.";
-	}
-
-	if (depth_clustering_detection != nullptr)
-	{
-		ProcessDepthClusteringDetection(depth_clustering_detection);
-	}
-	else
-	{
-		AERROR << "Depth clustering detection message missing.";
-	}
-
-	if (control_command != nullptr)
-	{
-		ProcessControlCommand(control_command);
-	}
-	else
-	{
-		AERROR << "Control command message missing.";
+		AWARN << "Control command reader missing.";
 	}
 
 	return true;
 }
 
 void
-DecisionComponent::ProcessFrame(const std::shared_ptr<Frame> frame_message)
+DecisionComponent::ProcessChassis(const std::shared_ptr<canbus::Chassis> message)
 {
-	AERROR << "Processing frame.";
-
-	frame_counter_ = frame_message->counter();
-}
-
-void
-DecisionComponent::ProcessChassis(const std::shared_ptr<canbus::Chassis> chassis_message)
-{
-	AERROR << "Processing chassis.";
-
-	float vehicle_speed_mps = chassis_message->speed_mps();
-
-	braking_distance_ = (vehicle_speed_mps * vehicle_speed_mps) / (2 * braking_acceleration_);
-
-	if (log_)
+	if (!message)
 	{
-		if (chassis_log_file_.is_open() && chassis_log_file_.good())
-		{
-			boost::posix_time::ptime timestamp = boost::posix_time::microsec_clock::universal_time();
-
-			chassis_log_file_ << to_simple_string(timestamp) << "\t" << frame_counter_ << "\t" << vehicle_speed_mps
-					<< "\t" << braking_distance_ << std::endl;
-		}
-		else
-		{
-			AERROR << "Chassis log file object missing.";
-		}
+		AERROR << "Chassis message missing.";
+        return;
 	}
-}
 
-void
-DecisionComponent::ProcessDepthClusteringDetection(const
-	std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detection_message)
-{
-	AERROR << "Processing depth clustering detections.";
+	AINFO << "Processing chassis.";
 
-	auto depth_clustering_parameter_factory = std::make_shared<depth_clustering::ParameterFactory>(
-		"/apollo/modules/safety_layer/conf/depth_clustering_config.json");
-	const auto depth_clustering_parameter = depth_clustering_parameter_factory->getDepthClusteringParameter();
-
-	switch (depth_clustering_parameter.bounding_box_type)
-	{
-	case depth_clustering::BoundingBox::Type::Cube:
-	{
-		for (const auto& perception_obstacle : depth_clustering_detection_message->perception_obstacle())
-		{
-			Eigen::Vector3d bounding_box_center;
-			Eigen::Vector3d bounding_box_extent;
-
-			bounding_box_center.x() = perception_obstacle.position().x();
-			bounding_box_center.y() = perception_obstacle.position().y();
-			bounding_box_center.z() = perception_obstacle.position().z();
-			bounding_box_extent.x() = perception_obstacle.length();
-			bounding_box_extent.y() = perception_obstacle.width();
-			bounding_box_extent.z() = perception_obstacle.height();
-
-			double bounding_box_volume = bounding_box_extent.x() * bounding_box_extent.y()
-							* bounding_box_extent.z();
-
-			if (bounding_box_volume <= 0.2)
-			{
-				continue;
-			}
-
-			if (bounding_box_center.z() <= -2.2)
-			{
-				continue;
-			}
-
-			double bounding_box_distance = CalculateBoundingBoxDistance(bounding_box_center, bounding_box_extent);
-
-			if (bounding_box_distance > braking_distance_ + restart_slack_ && override_ == true)
-			{
-				override_ = false;
-				break;
-			}
-
-			if (bounding_box_distance < braking_distance_ + braking_slack_ && override_ == false)
-			{
-				override_ = true;
-				break;
-			}
-		}
-
-		break;
-	}
-	case depth_clustering::BoundingBox::Type::Polygon:
-	{
-		AERROR << "Override decision logic not implemeneted for polygon.";
-		override_ = false;
-
-		break;
-	}
-	case depth_clustering::BoundingBox::Type::Flat:
-	{
-		break;
-	}
-	default:
-	{
-		break;
-	}
-	}
+	chassis_speed_mps_ = message->speed_mps();
 }
 
 void
 DecisionComponent::ProcessControlCommand(const
-	std::shared_ptr<control::ControlCommand> control_command_message)
+	std::shared_ptr<control::ControlCommand> message)
 {
-	AERROR << "Processing control command.";
+	if (!message)
+	{
+		AERROR << "Control command message missing.";
+        return;
+	}
 
-	auto control_command = std::make_shared<control::ControlCommand>(*control_command_message);
+	if (!writer_control_command_)
+	{
+		AERROR << "Control command writer missing.";
+        return;
+	}
+
+	AINFO << "Processing control command.";
+
+	auto control_command = std::make_shared<control::ControlCommand>(*message);
 
 	if (override_)
 	{
 		control_command->set_throttle(0);
-		control_command->set_brake(override_braking_percentage_);
-		AERROR << "Overridden.";
+		control_command->set_brake(control_command_brake_);
+		AWARN << "Activated safety override.";
 	}
 
-	control_command_writer_->Write(control_command);
+	writer_control_command_->Write(control_command);
 }
 
-double
-DecisionComponent::CalculateBoundingBoxDistance(const Eigen::Vector3d& center, const Eigen::Vector3d& extent)
+void
+DecisionComponent::ProcessDepthClusteringDetections(const
+	std::shared_ptr<perception::PerceptionObstacles> message)
 {
-	Eigen::Vector3d bounding_box_vertex;
-	std::vector<double> bounding_box_vertex_distances;
-	double bounding_box_vertex_distance_min = std::numeric_limits<double>::max();
-
-	bounding_box_vertex.x() = center.x() - (extent.x() / 2.0);
-	bounding_box_vertex.y() = center.y() - (extent.y() / 2.0);
-	bounding_box_vertex.z() = center.z() - (extent.z() / 2.0);
-	bounding_box_vertex_distances.push_back(bounding_box_vertex.norm());
-
-	bounding_box_vertex.x() = center.x() - (extent.x() / 2.0);
-	bounding_box_vertex.y() = center.y() - (extent.y() / 2.0);
-	bounding_box_vertex.z() = center.z() + (extent.z() / 2.0);
-	bounding_box_vertex_distances.push_back(bounding_box_vertex.norm());
-
-	bounding_box_vertex.x() = center.x() - (extent.x() / 2.0);
-	bounding_box_vertex.y() = center.y() + (extent.y() / 2.0);
-	bounding_box_vertex.z() = center.z() - (extent.z() / 2.0);
-	bounding_box_vertex_distances.push_back(bounding_box_vertex.norm());
-
-	bounding_box_vertex.x() = center.x() - (extent.x() / 2.0);
-	bounding_box_vertex.y() = center.y() + (extent.y() / 2.0);
-	bounding_box_vertex.z() = center.z() + (extent.z() / 2.0);
-	bounding_box_vertex_distances.push_back(bounding_box_vertex.norm());
-
-	bounding_box_vertex.x() = center.x() + (extent.x() / 2.0);
-	bounding_box_vertex.y() = center.y() - (extent.y() / 2.0);
-	bounding_box_vertex.z() = center.z() - (extent.z() / 2.0);
-	bounding_box_vertex_distances.push_back(bounding_box_vertex.norm());
-
-	bounding_box_vertex.x() = center.x() + (extent.x() / 2.0);
-	bounding_box_vertex.y() = center.y() - (extent.y() / 2.0);
-	bounding_box_vertex.z() = center.z() + (extent.z() / 2.0);
-	bounding_box_vertex_distances.push_back(bounding_box_vertex.norm());
-
-	bounding_box_vertex.x() = center.x() + (extent.x() / 2.0);
-	bounding_box_vertex.y() = center.y() + (extent.y() / 2.0);
-	bounding_box_vertex.z() = center.z() - (extent.z() / 2.0);
-	bounding_box_vertex_distances.push_back(bounding_box_vertex.norm());
-
-	bounding_box_vertex.x() = center.x() + (extent.x() / 2.0);
-	bounding_box_vertex.y() = center.y() + (extent.y() / 2.0);
-	bounding_box_vertex.z() = center.z() + (extent.z() / 2.0);
-	bounding_box_vertex_distances.push_back(bounding_box_vertex.norm());
-
-	for (const auto& bounding_box_vertex_distance : bounding_box_vertex_distances)
+	if (!message)
 	{
-		if (bounding_box_vertex_distance < bounding_box_vertex_distance_min)
-		{
-			bounding_box_vertex_distance_min = bounding_box_vertex_distance;
-		}
+		AERROR << "Depth Clustering detections message missing.";
+        return;
 	}
 
-	return bounding_box_vertex_distance_min;
+	AINFO << "Processing Depth Clustering detections.";
+
+	auto depth_clustering_parameter_factory = depth_clustering::ParameterFactory(
+		depth_clustering_config_file_name_);
+	const auto& depth_clustering_parameter = depth_clustering_parameter_factory.getDepthClusteringParameter();
+	const auto& bounding_box_type = depth_clustering_parameter.bounding_box_type;
+
+	switch (bounding_box_type)
+	{
+	case depth_clustering::BoundingBox::Type::Cube:
+	{
+		AINFO << "Processing Depth Clustering cube detections.";
+		ProcessDepthClusteringDetectionsCube(message);
+		break;
+	}
+	case depth_clustering::BoundingBox::Type::Polygon:
+	{
+		AINFO << "Processing Depth Clustering polygon detections.";
+		ProcessDepthClusteringDetectionsPolygon(message);
+		break;
+	}
+	case depth_clustering::BoundingBox::Type::Flat:
+	{
+		AINFO << "Processing Depth Clustering flat detections.";
+		ProcessDepthClusteringDetectionsFlat(message);
+		break;
+	}
+	default:
+	{
+		AWARN << "Unknown bounding box type " << static_cast<int>(bounding_box_type) << ".";
+		AINFO << "Processing Depth Clustering cube detections.";
+		ProcessDepthClusteringDetectionsCube(message);
+		break;
+	}
+	}
 }
-} // safety_layer
-} // apollo
+
+void
+DecisionComponent::ProcessDepthClusteringDetectionsCube(
+	const std::shared_ptr<perception::PerceptionObstacles> message)
+{
+	if (!message)
+	{
+		AERROR << "Depth Clustering detections message missing.";
+        return;
+	}
+
+	AWARN << "Not implemeneted for Depth Clustering cube detections.";
+	override_ = false;
+}
+
+void
+DecisionComponent::ProcessDepthClusteringDetectionsPolygon(
+	const std::shared_ptr<perception::PerceptionObstacles> message)
+{
+	if (!message)
+	{
+		AERROR << "Depth Clustering detections message missing.";
+        return;
+	}
+
+	AWARN << "Not implemeneted for Depth Clustering polygon detections.";
+	override_ = false;
+}
+
+void
+DecisionComponent::ProcessDepthClusteringDetectionsFlat(
+	const std::shared_ptr<perception::PerceptionObstacles> message)
+{
+	if (!message)
+	{
+		AERROR << "Depth Clustering detections message missing.";
+        return;
+	}
+
+	AWARN << "Not implemeneted for Depth Clustering flat detections.";
+	override_ = false;
+}
+}	/* safety_layer */
+}	/* apollo */

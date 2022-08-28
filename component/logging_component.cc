@@ -8,23 +8,49 @@ namespace apollo
 {
 namespace safety_layer
 {
-LoggingComponent::LoggingComponent() : reader_ground_truth_3d_(
-    nullptr), reader_point_cloud_(nullptr), channel_name_reader_ground_truth_3d_(
+LoggingComponent::LoggingComponent() : reader_chassis_(nullptr), reader_ground_truth_3d_(
+    nullptr), reader_point_cloud_(nullptr), channel_name_reader_chassis_(
+    "/apollo/canbus/chassis"), channel_name_reader_ground_truth_3d_(
     "/apollo/perception/ground_truth/3d_detections"), channel_name_reader_point_cloud_(
     "/apollo/sensor/lidar128/compensator/PointCloud2"), log_(false), log_directory_name_point_cloud_(
-    "/apollo/data/log/safety_layer.lidar.log.d"), log_file_name_ground_truth_3d_(
+    "/apollo/data/log/safety_layer.point_cloud.log.d"), log_file_name_chassis_(
+    "/apollo/data/log/safety_layer.chassis.log.txt"), log_file_name_ground_truth_3d_(
     "/apollo/data/log/safety_layer.ground_truth_3d.log.json")
 {
 }
 
 LoggingComponent::~LoggingComponent()
 {
+    if (!log_)
+    {
+        return;
+    }
+
+    log_file_chassis_.close();
+
     writeLogGroundTruth3D();
 }
 
 bool
 LoggingComponent::Init()
 {
+    if (!log_)
+    {
+        return true;
+    }
+
+    reader_chassis_ = node_->CreateReader<canbus::Chassis>(
+        channel_name_reader_chassis_);
+
+    if (!reader_chassis_)
+	{
+		AWARN << "Failed to create chassis reader.";
+	}
+    else
+    {
+        createLogFileChassis();
+    }
+
 	reader_ground_truth_3d_ = node_->CreateReader<perception::PerceptionObstacles>(
 		channel_name_reader_ground_truth_3d_);
 
@@ -56,6 +82,16 @@ LoggingComponent::Proc()
         return true;
     }
 
+    if (reader_chassis_)
+    {
+        reader_chassis_->Observe();
+        LogChassis(reader_chassis_->GetLatestObserved());
+    }
+    else
+	{
+		AWARN << "Chassis reader missing.";
+	}
+
 	if (reader_ground_truth_3d_)
     {
         reader_ground_truth_3d_->Observe();
@@ -82,6 +118,11 @@ LoggingComponent::Proc()
 void
 LoggingComponent::createLogDirectoryPointCloud()
 {
+    if (!log_)
+    {
+        return;
+    }
+
     boost::filesystem::path log_directory_point_cloud(log_directory_name_point_cloud_);
 
     if(boost::filesystem::exists(log_directory_point_cloud))
@@ -99,9 +140,63 @@ LoggingComponent::createLogDirectoryPointCloud()
 }
 
 void
+LoggingComponent::createLogFileChassis()
+{
+    if (!log_)
+    {
+        return;
+    }
+
+    log_file_chassis_.open(log_file_name_chassis_, std::fstream::out | std::fstream::trunc);
+
+    if (log_file_chassis_.is_open() && log_file_chassis_.good())
+    {
+        log_file_chassis_ << "Sequence Number\tSpeed (m/s)" << std::endl;
+    }
+    else
+    {
+        AERROR << "Failed to open chassis log file.";
+    }
+}
+
+void
+LoggingComponent::LogChassis(const std::shared_ptr<canbus::Chassis> message)
+{
+    if (!log_)
+    {
+        return;
+    }
+
+    if (!message)
+	{
+		AERROR << "Chassis message missing.";
+        return;
+	}
+
+	AINFO << "Logging chassis.";
+
+    const unsigned& sequence_num = message->header().sequence_num();
+    const float& speed_mps = message->speed_mps();
+
+    if (log_file_chassis_.is_open() && log_file_chassis_.good())
+    {
+        log_file_chassis_ << sequence_num << "\t" << speed_mps << std::endl;
+    }
+    else
+    {
+        AERROR << "Invalid chassis log file stream.";
+    }
+}
+
+void
 LoggingComponent::LogGroundTruth3D(const
 	std::shared_ptr<perception::PerceptionObstacles> message)
 {
+    if (!log_)
+    {
+        return;
+    }
+
     if (!message)
 	{
 		AERROR << "3D ground truth message missing.";
@@ -153,6 +248,11 @@ void
 LoggingComponent::LogPointCloud(const
 	std::shared_ptr<drivers::PointCloud> message)
 {
+    if (!log_)
+    {
+        return;
+    }
+
     if (!message)
 	{
 		AERROR << "Point cloud message missing.";

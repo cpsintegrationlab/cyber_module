@@ -25,7 +25,6 @@ cc_library(
 		'-DMODULE_NAME=\\"safety_layer\\"',
 	],
 	linkopts = [
-		"-lboost_date_time",
 		"-lboost_filesystem",
 	],
 	deps = [

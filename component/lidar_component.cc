@@ -114,33 +114,33 @@ LidarComponent::ProcessPointCloud(const
 	depth_clustering_->processOneFrameForApollo(frame_name, point_cloud);
 
 	const auto bounding_box = depth_clustering_->getBoundingBox();
-	const auto bounding_box_type = depth_clustering_->getParameter().bounding_box_type;
+	const auto& bounding_box_type = depth_clustering_->getParameter().bounding_box_type;
 
 	switch (bounding_box_type)
 	{
 	case depth_clustering::BoundingBox::Type::Cube:
 	{
+		AINFO << "Writing Depth Clustering cube detections.";
 		writeCyberDepthClusteringDetectionsCube(bounding_box);
-		AINFO << "Wrote Depth Clustering Cube Detections.";
 		break;
 	}
 	case depth_clustering::BoundingBox::Type::Polygon:
 	{
+		AINFO << "Writing Depth Clustering polygon detections.";
 		writeCyberDepthClusteringDetectionsPolygon(bounding_box);
-		AINFO << "Wrote Depth Clustering Polygon Detections.";
 		break;
 	}
 	case depth_clustering::BoundingBox::Type::Flat:
 	{
+		AINFO << "Writing Depth Clustering flat detections.";
 		writeCyberDepthClusteringDetectionsFlat(bounding_box);
-		AINFO << "Wrote Depth Clustering Flat Detections.";
 		break;
 	}
 	default:
 	{
 		AWARN << "Unknown bounding box type " << static_cast<int>(bounding_box_type) << ".";
+		AINFO << "Writing Depth Clustering cube detections.";
 		writeCyberDepthClusteringDetectionsCube(bounding_box);
-		AINFO << "Wrote Depth Clustering Cube Detections.";
 		break;
 	}
 	}

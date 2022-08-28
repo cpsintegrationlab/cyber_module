@@ -1,6 +1,8 @@
 #include <boost/property_tree/ptree.hpp>
+#include <fstream>
 #include <memory>
 
+#include "modules/canbus/proto/chassis.pb.h"
 #include "cyber/class_loader/class_loader.h"
 #include "cyber/component/component.h"
 #include "modules/perception/proto/perception_obstacle.pb.h"
@@ -31,6 +33,12 @@ private:
 	createLogDirectoryPointCloud();
 
 	void
+	createLogFileChassis();
+
+	void
+	LogChassis(const std::shared_ptr<canbus::Chassis> message);
+
+	void
 	LogGroundTruth3D(const std::shared_ptr<perception::PerceptionObstacles> message);
 
 	void
@@ -39,13 +47,17 @@ private:
     void
 	writeLogGroundTruth3D();
 
+	std::shared_ptr<cyber::Reader<canbus::Chassis>> reader_chassis_;
 	std::shared_ptr<cyber::Reader<perception::PerceptionObstacles>> reader_ground_truth_3d_;
 	std::shared_ptr<cyber::Reader<drivers::PointCloud>> reader_point_cloud_;
+	const std::string channel_name_reader_chassis_;
 	const std::string channel_name_reader_ground_truth_3d_;
 	const std::string channel_name_reader_point_cloud_;
 
 	bool log_;
     const std::string log_directory_name_point_cloud_;
+	std::ofstream log_file_chassis_;
+	const std::string log_file_name_chassis_;
 	const std::string log_file_name_ground_truth_3d_;
 	boost::property_tree::ptree log_file_tree_ground_truth_3d_;
 };

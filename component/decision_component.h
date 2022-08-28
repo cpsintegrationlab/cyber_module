@@ -1,14 +1,12 @@
-#include <fstream>
-#include <memory>
 #include <Eigen/Dense>
+#include <memory>
 
+#include "modules/canbus/proto/chassis.pb.h"
 #include "cyber/class_loader/class_loader.h"
 #include "cyber/component/component.h"
-#include "cyber/component/timer_component.h"
-#include "modules/canbus/proto/chassis.pb.h"
 #include "modules/control/proto/control_cmd.pb.h"
 #include "modules/perception/proto/perception_obstacle.pb.h"
-#include "modules/safety_layer/proto/frame.pb.h"
+#include "cyber/component/timer_component.h"
 
 namespace apollo
 {
@@ -31,42 +29,42 @@ public:
 private:
 
 	void
-	ProcessFrame(const std::shared_ptr<Frame> frame_message);
+	ProcessChassis(const std::shared_ptr<canbus::Chassis> message);
 
 	void
-	ProcessChassis(const std::shared_ptr<canbus::Chassis> chassis_message);
+	ProcessControlCommand(const std::shared_ptr<control::ControlCommand> message);
 
 	void
-	ProcessDepthClusteringDetection(
-			const std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detection_message);
+	ProcessDepthClusteringDetections(
+		const std::shared_ptr<perception::PerceptionObstacles> message);
 
 	void
-	ProcessControlCommand(const std::shared_ptr<control::ControlCommand> control_command_message);
+	ProcessDepthClusteringDetectionsCube(
+		const std::shared_ptr<perception::PerceptionObstacles> message);
 
-	double
-	CalculateBoundingBoxDistance(const Eigen::Vector3d& center, const Eigen::Vector3d& extent);
+	void
+	ProcessDepthClusteringDetectionsPolygon(
+		const std::shared_ptr<perception::PerceptionObstacles> message);
 
-	std::shared_ptr<cyber::Reader<Frame>> frame_reader_;
-	std::shared_ptr<cyber::Reader<canbus::Chassis>> chassis_reader_;
-	std::shared_ptr<cyber::Reader<perception::PerceptionObstacles>> depth_clustering_detection_reader_;
-	std::shared_ptr<cyber::Reader<control::ControlCommand>> control_command_reader_;
-	std::shared_ptr<cyber::Writer<control::ControlCommand>> control_command_writer_;
+	void
+	ProcessDepthClusteringDetectionsFlat(
+		const std::shared_ptr<perception::PerceptionObstacles> message);
 
-	double target_speed_mps_;
-	double braking_acceleration_;
-	double braking_distance_;
-	double braking_slack_;
-	double restart_slack_;
+	std::shared_ptr<cyber::Reader<canbus::Chassis>> reader_chassis_;
+	std::shared_ptr<cyber::Reader<control::ControlCommand>> reader_control_command_;
+	std::shared_ptr<cyber::Reader<perception::PerceptionObstacles>> reader_depth_clustering_detections_;
+	std::shared_ptr<cyber::Writer<control::ControlCommand>> writer_control_command_;
+	const std::string channel_name_reader_chassis_;
+	const std::string channel_name_reader_control_command_;
+	const std::string channel_name_reader_depth_clustering_detections_;
+	const std::string channel_name_writer_control_command_;
 
 	bool override_;
-	double override_braking_percentage_;
-
-	const std::string chassis_log_file_name_ = "/apollo/data/log/safety_layer.chassis.json";
-	std::ofstream chassis_log_file_;
-	unsigned long frame_counter_;
-	bool log_;
+	float chassis_speed_mps_;
+	float control_command_brake_;
+	const std::string depth_clustering_config_file_name_;
 };
 
 CYBER_REGISTER_COMPONENT (DecisionComponent)
-} // safety_layer
-} // apollo
+}	/* safety_layer */
+}	/* apollo */
