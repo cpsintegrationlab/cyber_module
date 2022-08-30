@@ -2,6 +2,7 @@
 #include <memory>
 
 #include "modules/canbus/proto/chassis.pb.h"
+#include "modules/localization/proto/gps.pb.h"
 #include "cyber/class_loader/class_loader.h"
 #include "cyber/component/component.h"
 #include "modules/control/proto/control_cmd.pb.h"
@@ -32,6 +33,9 @@ private:
 	ProcessChassis(const std::shared_ptr<canbus::Chassis> chassis);
 
 	void
+	ProcessGPS(const std::shared_ptr<localization::Gps> gps);
+
+	void
 	ProcessControlCommand(const std::shared_ptr<control::ControlCommand> control_command);
 
 	void
@@ -53,16 +57,26 @@ private:
 	std::shared_ptr<cyber::Reader<canbus::Chassis>> reader_chassis_;
 	std::shared_ptr<cyber::Reader<control::ControlCommand>> reader_control_command_;
 	std::shared_ptr<cyber::Reader<perception::PerceptionObstacles>> reader_depth_clustering_detections_;
+	std::shared_ptr<cyber::Reader<localization::Gps>> reader_gps_;
 	std::shared_ptr<cyber::Writer<control::ControlCommand>> writer_control_command_;
+
 	const std::string channel_name_reader_chassis_;
 	const std::string channel_name_reader_control_command_;
 	const std::string channel_name_reader_depth_clustering_detections_;
 	const std::string channel_name_writer_control_command_;
+	const std::string depth_clustering_config_file_name_;
 
+	bool fault_detected_;
 	bool override_;
+
+	float braking_acceleration_;
+	float braking_distance_;
 	float chassis_speed_mps_;
 	float control_command_brake_;
-	const std::string depth_clustering_config_file_name_;
+
+	Eigen::Vector3d localization_position_;
+	Eigen::Vector3d velocity_;
+	Eigen::Vector3d accel_;
 };
 
 CYBER_REGISTER_COMPONENT (DecisionComponent)

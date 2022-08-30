@@ -6,16 +6,17 @@ namespace apollo
 namespace safety_layer
 {
 DecisionComponent::DecisionComponent() :
-	reader_chassis_(nullptr), reader_control_command_(
-	nullptr), reader_depth_clustering_detections_(nullptr), writer_control_command_(
-	nullptr), channel_name_reader_chassis_(
+	reader_chassis_(nullptr), reader_control_command_(nullptr),
+	reader_depth_clustering_detections_(nullptr), reader_gps_(nullptr),
+	writer_control_command_(nullptr), channel_name_reader_chassis_(
 	"/apollo/canbus/chassis"), channel_name_reader_control_command_(
 	"/apollo/control"), channel_name_reader_depth_clustering_detections_(
 	"/apollo/safety_layer/lidar/depth_clustering/detections"), channel_name_writer_control_command_(
-	"/apollo/safety_layer/decision/control"),
-	override_(false), chassis_speed_mps_(0), control_command_brake_(
-	100), depth_clustering_config_file_name_(
-	"/apollo/modules/safety_layer/conf/depth_clustering.json")
+	"/apollo/safety_layer/decision/control"), depth_clustering_config_file_name_(
+	"/apollo/modules/safety_layer/conf/depth_clustering.json"),
+	fault_detected_(false), override_(false),
+	braking_acceleration_(7.0), braking_distance_(0.0),
+	chassis_speed_mps_(0), control_command_brake_(100)
 {
 }
 
@@ -31,7 +32,17 @@ DecisionComponent::Init()
 
     if (!reader_chassis_)
 	{
-		AWARN << "Failed to create chassis reader.";
+		AERROR << "Failed to create chassis reader.";
+		return false; // Sensor input, depend and use
+	}
+
+	reader_gps_ = node_->CreateReader<localization::Gps>(
+		"/apollo/sensor/gnss/odometry");
+
+    if (!reader_gps_)
+	{
+		AERROR << "Failed to create GPS reader.";
+		return false; // Sensor input, depend and use
 	}
 
 	reader_control_command_ = node_->CreateReader<control::ControlCommand>(
@@ -71,7 +82,17 @@ DecisionComponent::Proc()
     }
     else
 	{
-		AWARN << "Chassis reader missing.";
+		AERROR << "Chassis reader missing.";
+	}
+
+	if (reader_gps_)
+    {
+		reader_gps_->Observe();
+		ProcessGPS(reader_gps_->GetLatestObserved());
+    }
+    else
+	{
+		AERROR << "GPS reader missing.";
 	}
 
 	if (reader_depth_clustering_detections_)
@@ -109,7 +130,30 @@ DecisionComponent::ProcessChassis(const std::shared_ptr<canbus::Chassis> chassis
 	AINFO << "Processing chassis.";
 
 	chassis_speed_mps_ = chassis->speed_mps();
+	braking_distance_ = (chassis_speed_mps_ * chassis_speed_mps_) / (2 * braking_acceleration_);
 }
+
+void
+DecisionComponent::ProcessGPS(const std::shared_ptr<localization::Gps> gps_message)
+{
+	auto position = gps_message->localization().position();
+	auto velocity = gps_message->localization().linear_velocity();
+	auto accel = gps_message->localization().linear_acceleration();
+
+	localization_position_.x() = position.x();
+	localization_position_.y() = position.y();
+	localization_position_.z() = position.z();
+
+	// The negative sign makes obstacle position and velocity vectors signs align
+	velocity_.x() = -velocity.x();
+	velocity_.y() = -velocity.y();
+	velocity_.z() = -velocity.z();
+
+	accel_.x() = -accel.x();
+	accel_.y() = -accel.y();
+	accel_.z() = -accel.z();
+}
+
 
 void
 DecisionComponent::ProcessControlCommand(const

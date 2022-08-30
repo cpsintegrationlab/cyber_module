@@ -34,6 +34,7 @@ cc_library(
 		"//modules/perception/proto:perception_proto",
 		"//modules/drivers/proto:sensor_proto",
 		"//modules/safety_layer/lib:depth_clustering_lib",
+		"//modules/localization/proto:gps_proto",
 		"@eigen",
 	],
 )
