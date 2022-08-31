@@ -33,8 +33,9 @@ cc_library(
 		"//modules/control/proto:control_proto",
 		"//modules/perception/proto:perception_proto",
 		"//modules/drivers/proto:sensor_proto",
-		"//modules/safety_layer/lib:depth_clustering_lib",
 		"//modules/localization/proto:gps_proto",
+		"//modules/safety_layer/lib:depth_clustering_lib",
+		"//modules/safety_layer/lib:verifiable_obstacle_detection_lib",
 		"@eigen",
 	],
 )

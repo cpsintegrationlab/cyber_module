@@ -1,4 +1,3 @@
-#include "modules/safety_layer/lib/depth_clustering/src/depth_clustering/api/api.h"
 #include "modules/safety_layer/component/decision_component.h"
 
 namespace apollo
@@ -7,10 +6,12 @@ namespace safety_layer
 {
 DecisionComponent::DecisionComponent() :
 	reader_chassis_(nullptr), reader_control_command_(nullptr),
-	reader_depth_clustering_detections_(nullptr), reader_gps_(nullptr),
+	reader_gps_(nullptr),
+	reader_detections_mission_(nullptr), reader_detections_safety_(nullptr),
 	writer_control_command_(nullptr), channel_name_reader_chassis_(
 	"/apollo/canbus/chassis"), channel_name_reader_control_command_(
-	"/apollo/control"), channel_name_reader_depth_clustering_detections_(
+	"/apollo/control"), channel_name_reader_detections_mission_(
+	"/apollo/perception/obstacles"), channel_name_reader_detections_safety_(
 	"/apollo/safety_layer/lidar/depth_clustering/detections"), channel_name_writer_control_command_(
 	"/apollo/safety_layer/decision/control"), depth_clustering_config_file_name_(
 	"/apollo/modules/safety_layer/conf/depth_clustering.json"),
@@ -53,12 +54,20 @@ DecisionComponent::Init()
 		AWARN << "Failed to create control command reader.";
 	}
 
-	reader_depth_clustering_detections_ = node_->CreateReader<perception::PerceptionObstacles>(
-		channel_name_reader_depth_clustering_detections_);
+	reader_detections_mission_ = node_->CreateReader<perception::PerceptionObstacles>(
+	channel_name_reader_detections_mission_);
 
-	if (!reader_depth_clustering_detections_)
+	if (!reader_detections_mission_)
 	{
-		AWARN << "Failed to create Depth Clustering detections reader.";
+		AWARN << "Failed to create mission detections reader.";
+	}
+
+	reader_detections_safety_ = node_->CreateReader<perception::PerceptionObstacles>(
+		channel_name_reader_detections_safety_);
+
+	if (!reader_detections_safety_)
+	{
+		AWARN << "Failed to create safety detections reader.";
 	}
 
 	writer_control_command_ = node_->CreateWriter<control::ControlCommand>(
@@ -67,6 +76,26 @@ DecisionComponent::Init()
 	if (!writer_control_command_)
 	{
 		AWARN << "Failed to create control command writer.";
+	}
+
+	verifiable_obstacle_detection_ = std::make_shared<verifiable_obstacle_detection::VerifiableObstacleDetection>();
+
+	if (verifiable_obstacle_detection_)
+	{
+		if (!verifiable_obstacle_detection_->initializeForApollo())
+		{
+			AERROR << "Failed to initialize Verifiable Obstacle Detection.";
+			return false;
+		}
+
+		if (FLAGS_minloglevel > 0)
+		{
+			verifiable_obstacle_detection_->disableConsoleLogging();
+		}
+	}
+	else
+	{
+		AWARN << "Failed to create Verifiable Obstacle Detection.";
 	}
 
 	return true;
@@ -95,14 +124,24 @@ DecisionComponent::Proc()
 		AERROR << "GPS reader missing.";
 	}
 
-	if (reader_depth_clustering_detections_)
+	if (reader_detections_mission_)
     {
-		reader_depth_clustering_detections_->Observe();
-		ProcessDepthClusteringDetections(reader_depth_clustering_detections_->GetLatestObserved());
+		reader_detections_mission_->Observe();
+
+		if (reader_detections_safety_)
+		{
+			reader_detections_safety_->Observe();
+			ProcessDetections(reader_detections_mission_->GetLatestObserved(),
+				reader_detections_safety_->GetLatestObserved());
+		}
+		else
+		{
+			AWARN << "Safety detections reader missing.";
+		}
     }
     else
 	{
-		AWARN << "Depth Clustering detections reader missing.";
+		AWARN << "Mission detections reader missing.";
 	}
 
 	if (reader_control_command_)
@@ -186,92 +225,83 @@ DecisionComponent::ProcessControlCommand(const
 }
 
 void
-DecisionComponent::ProcessDepthClusteringDetections(const
-	std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detections)
+DecisionComponent::ProcessDetections(
+	const std::shared_ptr<perception::PerceptionObstacles> detections_mission,
+	const std::shared_ptr<perception::PerceptionObstacles> detections_safety)
 {
-	if (!depth_clustering_detections)
+	if (!detections_mission)
 	{
-		AERROR << "Depth Clustering detections missing.";
+		AERROR << "Mission detections missing.";
         return;
 	}
 
-	AINFO << "Processing Depth Clustering detections.";
+	if (!detections_safety)
+	{
+		AERROR << "Safety detections missing.";
+        return;
+	}
+
+	AINFO << "Processing detections.";
 
 	auto depth_clustering_parameter_factory = depth_clustering::ParameterFactory(
 		depth_clustering_config_file_name_);
 	const auto& depth_clustering_parameter = depth_clustering_parameter_factory.getDepthClusteringParameter();
 	const auto& bounding_box_type = depth_clustering_parameter.bounding_box_type;
 
+	verifiable_obstacle_detection_->processOneFrameForApollo(
+		convertDetectionsToPolygons(detections_mission, depth_clustering::BoundingBox::Type::Polygon),
+		convertDetectionsToPolygons(detections_safety, bounding_box_type));
+}
+
+std::vector<verifiable_obstacle_detection::Polygon>
+DecisionComponent::convertDetectionsToPolygons(const std::shared_ptr<perception::PerceptionObstacles> detections,
+	depth_clustering::BoundingBox::Type bounding_box_type)
+{
+	std::vector<verifiable_obstacle_detection::Polygon> polygons;
+
 	switch (bounding_box_type)
 	{
+	default:
+	{
+		AWARN << "Unknown bounding box type " << static_cast<int>(bounding_box_type) << ".";
+	}
 	case depth_clustering::BoundingBox::Type::Cube:
 	{
-		AINFO << "Processing Depth Clustering cube detections.";
-		ProcessDepthClusteringDetectionsCube(depth_clustering_detections);
+		AINFO << "Converting cube detections to polygons.";
+		AWARN << "Polygon conversion for cube detections not implemented.";
 		break;
 	}
 	case depth_clustering::BoundingBox::Type::Polygon:
 	{
-		AINFO << "Processing Depth Clustering polygon detections.";
-		ProcessDepthClusteringDetectionsPolygon(depth_clustering_detections);
+		AINFO << "Converting polygon detections to polygons.";
+
+		for (const auto& perception_obstacle : detections->perception_obstacle())
+		{
+			verifiable_obstacle_detection::Polygon polygon;
+			std::vector<verifiable_obstacle_detection::Point2D> polygon_points;
+
+			for (const auto& polygon_point : perception_obstacle.polygon_point())
+			{
+				polygon_points.push_back(verifiable_obstacle_detection::Point2D(polygon_point.x(), polygon_point.y()));
+			}
+
+			boost::geometry::assign_points(polygon, polygon_points);
+			boost::geometry::correct(polygon);
+
+			polygons.push_back(polygon);
+		}
+
 		break;
 	}
 	case depth_clustering::BoundingBox::Type::Flat:
 	{
-		AINFO << "Processing Depth Clustering flat detections.";
-		ProcessDepthClusteringDetectionsFlat(depth_clustering_detections);
-		break;
-	}
-	default:
-	{
-		AWARN << "Unknown bounding box type " << static_cast<int>(bounding_box_type) << ".";
-		AINFO << "Processing Depth Clustering cube detections.";
-		ProcessDepthClusteringDetectionsCube(depth_clustering_detections);
+		AINFO << "Converting flat detections to polygons.";
+		AWARN << "Polygon conversion for flat detections not implemented.";
 		break;
 	}
 	}
-}
 
-void
-DecisionComponent::ProcessDepthClusteringDetectionsCube(
-	const std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detections)
-{
-	if (!depth_clustering_detections)
-	{
-		AERROR << "Depth Clustering detections missing.";
-        return;
-	}
-
-	AWARN << "Not implemeneted for Depth Clustering cube detections.";
-	override_ = false;
-}
-
-void
-DecisionComponent::ProcessDepthClusteringDetectionsPolygon(
-	const std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detections)
-{
-	if (!depth_clustering_detections)
-	{
-		AERROR << "Depth Clustering detections missing.";
-        return;
-	}
-
-	AWARN << "Not implemeneted for Depth Clustering polygon detections.";
-	override_ = false;
-}
-
-void
-DecisionComponent::ProcessDepthClusteringDetectionsFlat(
-	const std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detections)
-{
-	if (!depth_clustering_detections)
-	{
-		AERROR << "Depth Clustering detections missing.";
-        return;
-	}
-
-	AWARN << "Not implemeneted for Depth Clustering flat detections.";
-	override_ = false;
+	return polygons;
 }
 }	/* safety_layer */
 }	/* apollo */
