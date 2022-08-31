@@ -33,7 +33,7 @@ DecisionComponent::Init()
     if (!reader_chassis_)
 	{
 		AERROR << "Failed to create chassis reader.";
-		// return false; // Sensor input, depend and use
+		return false; // Sensor input, depend and use
 	}
 
 	reader_gps_ = node_->CreateReader<localization::Gps>(
@@ -42,7 +42,7 @@ DecisionComponent::Init()
     if (!reader_gps_)
 	{
 		AERROR << "Failed to create GPS reader.";
-		// return false; // Sensor input, depend and use
+		return false; // Sensor input, depend and use
 	}
 
 	reader_control_command_ = node_->CreateReader<control::ControlCommand>(
@@ -75,16 +75,6 @@ DecisionComponent::Init()
 bool
 DecisionComponent::Proc()
 {
-	if (reader_control_command_)
-    {
-		reader_control_command_->Observe();
-		ProcessControlCommand(reader_control_command_->GetLatestObserved());
-    }
-    else
-	{
-		AWARN << "Control command reader missing.";
-	}
-
 	if (reader_chassis_)
     {
 		reader_chassis_->Observe();
@@ -115,7 +105,15 @@ DecisionComponent::Proc()
 		AWARN << "Depth Clustering detections reader missing.";
 	}
 
-
+	if (reader_control_command_)
+    {
+		reader_control_command_->Observe();
+		ProcessControlCommand(reader_control_command_->GetLatestObserved());
+    }
+    else
+	{
+		AWARN << "Control command reader missing.";
+	}
 
 	return true;
 }
@@ -138,22 +136,22 @@ DecisionComponent::ProcessChassis(const std::shared_ptr<canbus::Chassis> chassis
 void
 DecisionComponent::ProcessGPS(const std::shared_ptr<localization::Gps> gps_message)
 {
-	// auto position = gps_message->localization().position();
-	// auto velocity = gps_message->localization().linear_velocity();
-	// auto accel = gps_message->localization().linear_acceleration();
+	auto position = gps_message->localization().position();
+	auto velocity = gps_message->localization().linear_velocity();
+	auto accel = gps_message->localization().linear_acceleration();
 
-	// localization_position_.x() = position.x();
-	// localization_position_.y() = position.y();
-	// localization_position_.z() = position.z();
+	localization_position_.x() = position.x();
+	localization_position_.y() = position.y();
+	localization_position_.z() = position.z();
 
-	// // The negative sign makes obstacle position and velocity vectors signs align
-	// velocity_.x() = -velocity.x();
-	// velocity_.y() = -velocity.y();
-	// velocity_.z() = -velocity.z();
+	// The negative sign makes obstacle position and velocity vectors signs align
+	velocity_.x() = -velocity.x();
+	velocity_.y() = -velocity.y();
+	velocity_.z() = -velocity.z();
 
-	// accel_.x() = -accel.x();
-	// accel_.y() = -accel.y();
-	// accel_.z() = -accel.z();
+	accel_.x() = -accel.x();
+	accel_.y() = -accel.y();
+	accel_.z() = -accel.z();
 }
 
 
@@ -177,10 +175,8 @@ DecisionComponent::ProcessControlCommand(const
 
 	auto control_command_override = std::make_shared<control::ControlCommand>(*control_command);
 
-	if (true)
+	if (override_)
 	{
-		control_command_override->set_steering_rate(0);
-		control_command_override->set_steering_target(0);
 		control_command_override->set_throttle(0);
 		control_command_override->set_brake(control_command_brake_);
 		AWARN << "Activated safety override.";
