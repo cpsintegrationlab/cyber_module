@@ -1,6 +1,8 @@
 #include <Eigen/Dense>
 #include <memory>
 
+#include "modules/safety_layer/lib/depth_clustering/src/depth_clustering/api/api.h"
+#include "modules/safety_layer/lib/verifiable_obstacle_detection/src/verifiable_obstacle_detection/api/api.h"
 #include "modules/canbus/proto/chassis.pb.h"
 #include "cyber/class_loader/class_loader.h"
 #include "cyber/component/component.h"
@@ -35,29 +37,26 @@ private:
 	ProcessControlCommand(const std::shared_ptr<control::ControlCommand> control_command);
 
 	void
-	ProcessDepthClusteringDetections(
-		const std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detections);
+	ProcessDetections(
+		const std::shared_ptr<perception::PerceptionObstacles> detections_mission,
+		const std::shared_ptr<perception::PerceptionObstacles> detections_safety);
 
-	void
-	ProcessDepthClusteringDetectionsCube(
-		const std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detections);
-
-	void
-	ProcessDepthClusteringDetectionsPolygon(
-		const std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detections);
-
-	void
-	ProcessDepthClusteringDetectionsFlat(
-		const std::shared_ptr<perception::PerceptionObstacles> depth_clustering_detections);
+	std::vector<verifiable_obstacle_detection::Polygon>
+	convertDetectionsToPolygons(const std::shared_ptr<perception::PerceptionObstacles> detections,
+		depth_clustering::BoundingBox::Type bounding_box_type);
 
 	std::shared_ptr<cyber::Reader<canbus::Chassis>> reader_chassis_;
 	std::shared_ptr<cyber::Reader<control::ControlCommand>> reader_control_command_;
-	std::shared_ptr<cyber::Reader<perception::PerceptionObstacles>> reader_depth_clustering_detections_;
+	std::shared_ptr<cyber::Reader<perception::PerceptionObstacles>> reader_detections_mission_;
+	std::shared_ptr<cyber::Reader<perception::PerceptionObstacles>> reader_detections_safety_;
 	std::shared_ptr<cyber::Writer<control::ControlCommand>> writer_control_command_;
 	const std::string channel_name_reader_chassis_;
 	const std::string channel_name_reader_control_command_;
-	const std::string channel_name_reader_depth_clustering_detections_;
+	const std::string channel_name_reader_detections_mission_;
+	const std::string channel_name_reader_detections_safety_;
 	const std::string channel_name_writer_control_command_;
+
+	std::shared_ptr<verifiable_obstacle_detection::VerifiableObstacleDetection> verifiable_obstacle_detection_;
 
 	bool override_;
 	float chassis_speed_mps_;

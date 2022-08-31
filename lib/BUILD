@@ -13,19 +13,20 @@ cc_library(
     copts = [
         '-DMODULE_NAME=\\"safety_layer\\"',
     ],
-    deps = [
-		"//modules/safety_layer/lib:depth_clustering_eigen_lib",
-	],
 )
 
 cc_library(
-    name = "depth_clustering_eigen_lib",
+    name = "verifiable_obstacle_detection_lib",
+    srcs = glob([
+        "verifiable_obstacle_detection/install/amd64/verifiable_obstacle_detection/release/lib/libvod_*.so",
+    ]),
     includes = [
-		"depth_clustering/install/amd64/eigen/include/eigen3",
+		"verifiable_obstacle_detection/src/verifiable_obstacle_detection",
 	],
     copts = [
         '-DMODULE_NAME=\\"safety_layer\\"',
     ],
 )
+
 
 cpplint()
