@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <math.h>
 #include "modules/safety_layer/component/decision_component.h"
 
@@ -20,7 +21,8 @@ DecisionComponent::DecisionComponent() :
     "/apollo/data/log/safety_layer.verifiable_obstacle_detection.log.d"),
 	localization_position_(0, 0, 0), velocity_(0, 0, 0), accel_(0, 0, 0),
 	override_(false), braking_acceleration_(7.0),
-	chassis_speed_mps_(0), control_command_brake_(100), control_latency_(0.01)
+	chassis_speed_mps_(0), control_command_brake_(100), control_latency_(0.01),
+	coverage_limit_(0.75)
 {
 }
 
@@ -142,6 +144,19 @@ DecisionComponent::Proc()
 			reader_detections_safety_->Observe();
 			ProcessDetections(reader_detections_mission_->GetLatestObserved(),
 				reader_detections_safety_->GetLatestObserved());
+
+			if (reader_mission_layer_trajectory_)
+			{
+				reader_mission_layer_trajectory_->Observe();
+				override_ = OverrideDecision(
+							verifiable_obstacle_detection_->getDetectionsSafetyDistanceEndPoints(),
+							verifiable_obstacle_detection_->getDetectionsSafetyCoverages(),
+							reader_mission_layer_trajectory_->GetLatestObserved());
+			}
+			else
+			{
+				AWARN << "Mission trajectory reader missing.";
+			}
 		}
 		else
 		{
@@ -151,13 +166,6 @@ DecisionComponent::Proc()
     else
 	{
 		AWARN << "Mission detections reader missing.";
-	}
-
-	if (reader_mission_layer_trajectory_)
-	{
-		reader_mission_layer_trajectory_->Observe();
-		override_ = CollisionRisk(verifiable_obstacle_detection_->getDetectionsSafetyDistanceEndPoints(),
-									reader_mission_layer_trajectory_->GetLatestObserved());
 	}
 
 	if (reader_control_command_)
@@ -285,12 +293,17 @@ DecisionComponent::DistanceAdjust(double distance)
 	return (distance * 0.95) - 0.1; // safety margin as per vOD paper, here we deduct it from distance to make conservative decisions.
 }
 
-bool
-DecisionComponent::CollisionRisk(
-	const std::vector<std::pair<verifiable_obstacle_detection::Point2D, verifiable_obstacle_detection::Point2D>>& safety_closest_points,
-	const std::shared_ptr<planning::ADCTrajectory> mission_layer_trajectory_message)
+double
+DecisionComponent::DistanceFromPoints(const verifiable_obstacle_detection::Point2D a, const verifiable_obstacle_detection::Point2D b)
 {
+	return sqrt(pow(a.x() - b.x(), 2) + pow(a.y() - b.y(), 2));
+}
 
+bool
+DecisionComponent::OverrideDecision(
+	const std::vector<std::pair<verifiable_obstacle_detection::Point2D, verifiable_obstacle_detection::Point2D>> safety_closest_points,
+	const std::vector<double> overlaps, const std::shared_ptr<planning::ADCTrajectory> mission_layer_trajectory_message)
+{
 	if (!mission_layer_trajectory_message)
 	{
 		AERROR << "Mission Layer Trajectory Missing.";
@@ -306,20 +319,33 @@ DecisionComponent::CollisionRisk(
 	braking_distance += ((chassis_speed_mps_ * chassis_speed_mps_) / (2 * braking_acceleration_)); // Deceleration distance
 	double time_to_stop = chassis_speed_mps_ / braking_acceleration_ + control_latency_;
 
-
 	// Only for fault injection scenario, return override value, rather than resetting it
 	// It supresses the fact that mission layer actually sees this obstacle and thus
 	// is able to plan around it.
-	if (safety_closest_points.size() > 0)
-	{
-		return true;
-	}
+	// if (safety_closest_points.size() > 0)
+	// {
+	// 	return true;
+	// }
+
+	AINFO << safety_closest_points.size();
+	AINFO << overlaps.size();
+	assert (safety_closest_points.size() == overlaps.size());
 
 	// TODO: This assumes scenario information, make it generic for future works.
-	for (const auto &points : safety_closest_points)
+	for (unsigned int i = 0; i < safety_closest_points.size(); i++)
 	{
-		// double distance_from_lidar = DistanceAdjust(sqrt(pow(points.second.x(), 2) + pow(points.second.y(), 2)));
-		double distance_between_points = DistanceAdjust(sqrt(pow(points.second.x() - points.first.x(), 2) + pow(points.second.y() - points.first.y(), 2)));
+		const std::pair<verifiable_obstacle_detection::Point2D, verifiable_obstacle_detection::Point2D> closest_points = safety_closest_points[i];
+		const double overlap = overlaps[i];
+
+		if (overlap >= coverage_limit_)
+		{
+			// Since the obstacle is detected by mission layer, skip this obstacle
+			// Disable this for FN Fault injection, but mission layer path updates will muddle things.
+			continue;
+		}
+
+		// double distance_from_lidar = DistanceAdjust(DistanceFromPoints(closest_points.second, verifiable_obstacle_detection::Point2D(0, 0)));
+		double distance_between_points = DistanceAdjust(DistanceFromPoints(closest_points.second, closest_points.first));
 
 		// Optimization
 		// Since closest separation is large enough,
@@ -339,9 +365,12 @@ DecisionComponent::CollisionRisk(
 
 			double path_point_x = trajectory_point.path_point().y() - localization_position_.y();
 			double path_point_y = trajectory_point.path_point().x() - localization_position_.x();
-			double distance_closest_from_lidar_traj = DistanceAdjust(sqrt(
-				pow(points.second.x() - (points.first.x() + path_point_x), 2) +
-				pow(points.second.y() - (points.first.y() + path_point_y), 2)));
+			verifiable_obstacle_detection::Point2D moved_closest_point_av = verifiable_obstacle_detection::Point2D(
+													closest_points.first.x() + path_point_x, closest_points.first.y() + path_point_y);
+			double distance_closest_from_lidar_traj = DistanceAdjust(DistanceFromPoints(closest_points.second, moved_closest_point_av));
+				// sqrt(
+				// pow(closest_points.second.x() - (closest_points.first.x() + path_point_x), 2) +
+				// pow(closest_points.second.y() - (closest_points.first.y() + path_point_y), 2)));
 
 			// We are assuming here that closest points don't change over the trajectory
 			// Ideally we should recalculate the closest points for each step in trajectory.

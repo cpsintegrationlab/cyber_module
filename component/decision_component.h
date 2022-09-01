@@ -51,9 +51,9 @@ private:
 		const std::shared_ptr<perception::PerceptionObstacles> detections_safety);
 
 	bool
-	CollisionRisk(
-		const std::vector<std::pair<verifiable_obstacle_detection::Point2D, verifiable_obstacle_detection::Point2D>>& safety_closest_points,
-		const std::shared_ptr<planning::ADCTrajectory> mission_layer_trajectory_message);
+	OverrideDecision(
+		const std::vector<std::pair<verifiable_obstacle_detection::Point2D, verifiable_obstacle_detection::Point2D>> safety_closest_points,
+		const std::vector<double> overlaps, const std::shared_ptr<planning::ADCTrajectory> mission_layer_trajectory_message);
 
 	std::vector<verifiable_obstacle_detection::Polygon>
 	convertDetectionsToPolygons(const std::shared_ptr<perception::PerceptionObstacles> detections,
@@ -61,6 +61,10 @@ private:
 
 	double
 	DistanceAdjust(double distance);
+
+	double
+	DistanceFromPoints(const verifiable_obstacle_detection::Point2D a, const verifiable_obstacle_detection::Point2D b);
+
 
 	std::shared_ptr<cyber::Reader<canbus::Chassis>> reader_chassis_;
 	std::shared_ptr<cyber::Reader<control::ControlCommand>> reader_control_command_;
@@ -89,6 +93,7 @@ private:
 	float chassis_speed_mps_;
 	float control_command_brake_;
 	float control_latency_;
+	float coverage_limit_;
 };
 
 CYBER_REGISTER_COMPONENT (DecisionComponent)
