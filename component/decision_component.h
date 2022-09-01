@@ -62,6 +62,7 @@ private:
 	float chassis_speed_mps_;
 	float control_command_brake_;
 	const std::string depth_clustering_config_file_name_;
+	const std::string log_directory_name_verifiable_obstacle_detection_;
 };
 
 CYBER_REGISTER_COMPONENT (DecisionComponent)

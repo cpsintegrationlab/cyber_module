@@ -12,11 +12,16 @@ LoggingComponent::LoggingComponent() : reader_chassis_(nullptr), reader_ground_t
     nullptr), reader_point_cloud_(nullptr), channel_name_reader_chassis_(
     "/apollo/canbus/chassis"), channel_name_reader_ground_truth_3d_(
     "/apollo/perception/ground_truth/3d_detections"), channel_name_reader_point_cloud_(
-    "/apollo/sensor/lidar128/compensator/PointCloud2"), log_(false), log_directory_name_point_cloud_(
-    "/apollo/data/log/safety_layer.point_cloud.log.d"), log_file_name_chassis_(
+    "/apollo/sensor/lidar128/compensator/PointCloud2"), log_(true), log_directory_name_point_cloud_(
+    "/apollo/data/log/safety_layer.point_cloud.log.d"), log_directory_name_verifiable_obstacle_detection_(
+    "/apollo/data/log/safety_layer.verifiable_obstacle_detection.log.d"), log_file_name_chassis_(
     "/apollo/data/log/safety_layer.chassis.log.txt"), log_file_name_ground_truth_3d_(
     "/apollo/data/log/safety_layer.ground_truth_3d.log.json")
 {
+    if (FLAGS_minloglevel > 0)
+    {
+        log_ = false;
+    }
 }
 
 LoggingComponent::~LoggingComponent()
@@ -70,6 +75,8 @@ LoggingComponent::Init()
     {
         createLogDirectoryPointCloud();
     }
+
+	createLogDirectoryVerifiableObstacleDetection();
 
 	return true;
 }
@@ -136,6 +143,30 @@ LoggingComponent::createLogDirectoryPointCloud()
     if (!boost::filesystem::create_directory(log_directory_point_cloud))
     {
         AWARN << "Failed to create point cloud log directory.";
+    }
+}
+
+void
+LoggingComponent::createLogDirectoryVerifiableObstacleDetection()
+{
+    if (!log_)
+    {
+        return;
+    }
+
+    boost::filesystem::path log_directory_verifiable_obstacle_detection(log_directory_name_verifiable_obstacle_detection_);
+
+    if(boost::filesystem::exists(log_directory_verifiable_obstacle_detection))
+    {
+        if (!boost::filesystem::remove_all(log_directory_verifiable_obstacle_detection))
+        {
+            AWARN << "Failed to remove existing Verifiable Obstacle Detection log directory.";
+        }
+    }
+
+    if (!boost::filesystem::create_directory(log_directory_verifiable_obstacle_detection))
+    {
+        AWARN << "Failed to create Verifiable Obstacle Detection log directory.";
     }
 }
 
