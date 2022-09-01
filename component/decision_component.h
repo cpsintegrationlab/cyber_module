@@ -77,6 +77,7 @@ private:
 	const std::string channel_name_reader_detections_safety_;
 	const std::string channel_name_writer_control_command_;
 	const std::string depth_clustering_config_file_name_;
+	const std::string log_directory_name_verifiable_obstacle_detection_;
 
 	Eigen::Vector3d localization_position_;
 	Eigen::Vector3d velocity_;

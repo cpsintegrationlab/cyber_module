@@ -16,6 +16,8 @@ DecisionComponent::DecisionComponent() :
 	"/apollo/safety_layer/lidar/depth_clustering/detections"), channel_name_writer_control_command_(
 	"/apollo/safety_layer/decision/control"), depth_clustering_config_file_name_(
 	"/apollo/modules/safety_layer/conf/depth_clustering.json"),
+	log_directory_name_verifiable_obstacle_detection_(
+    "/apollo/data/log/safety_layer.verifiable_obstacle_detection.log.d"),
 	localization_position_(0, 0, 0), velocity_(0, 0, 0), accel_(0, 0, 0),
 	override_(false), braking_acceleration_(7.0),
 	chassis_speed_mps_(0), control_command_brake_(100), control_latency_(0.01)
@@ -81,7 +83,7 @@ DecisionComponent::Init()
 
 	if (verifiable_obstacle_detection_)
 	{
-		if (!verifiable_obstacle_detection_->initializeForApollo())
+		if (!verifiable_obstacle_detection_->initializeForApollo(log_directory_name_verifiable_obstacle_detection_))
 		{
 			AERROR << "Failed to initialize Verifiable Obstacle Detection.";
 			return false;
@@ -264,12 +266,14 @@ DecisionComponent::ProcessDetections(
 
 	AINFO << "Processing detections.";
 
+	const std::string sequence_num = std::to_string(detections_mission->header().sequence_num());
+	const std::string frame_name = sequence_num + ".bin";
 	auto depth_clustering_parameter_factory = depth_clustering::ParameterFactory(
 		depth_clustering_config_file_name_);
 	const auto& depth_clustering_parameter = depth_clustering_parameter_factory.getDepthClusteringParameter();
 	const auto& bounding_box_type = depth_clustering_parameter.bounding_box_type;
 
-	verifiable_obstacle_detection_->processOneFrameForApollo(
+	verifiable_obstacle_detection_->processOneFrameForApollo(frame_name,
 		convertDetectionsToPolygons(detections_mission, depth_clustering::BoundingBox::Type::Polygon),
 		convertDetectionsToPolygons(detections_safety, bounding_box_type));
 

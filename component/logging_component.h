@@ -33,6 +33,9 @@ private:
 	createLogDirectoryPointCloud();
 
 	void
+	createLogDirectoryVerifiableObstacleDetection();
+
+	void
 	createLogFileChassis();
 
 	void
@@ -56,6 +59,7 @@ private:
 
 	bool log_;
     const std::string log_directory_name_point_cloud_;
+	const std::string log_directory_name_verifiable_obstacle_detection_;
 	std::ofstream log_file_chassis_;
 	const std::string log_file_name_chassis_;
 	const std::string log_file_name_ground_truth_3d_;
