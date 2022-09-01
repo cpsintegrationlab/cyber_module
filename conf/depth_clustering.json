@@ -3,9 +3,9 @@
         "distance_clustering": 5,
         "angle_clustering": 10,
         "angle_ground_removal": 10,
-        "size_cluster_min": 1,
-        "size_cluster_max": 50000,
-        "size_smooth_window": 0,
+        "size_cluster_min": 10,
+        "size_cluster_max": 20000,
+        "size_smooth_window": 5,
         "bounding_box_type": "polygon",
         "difference_type": "angles"
     },

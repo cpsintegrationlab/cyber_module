@@ -294,7 +294,7 @@ DecisionComponent::CollisionRisk(
 	if (!mission_layer_trajectory_message)
 	{
 		AERROR << "Mission Layer Trajectory Missing.";
-        return false; // TODO should be true, but simulation setup is finicky
+        return false; // TODO should be true but simulation setup is finicky 
 	}
 
 	Eigen::Vector3d ego_extent;
@@ -307,6 +307,16 @@ DecisionComponent::CollisionRisk(
 	double time_to_stop = chassis_speed_mps_ / braking_acceleration_ + control_latency_;
 
 	AERROR << safety_closest_points.size();
+
+	// Only for fault injection scenario, return override value, rather than resetting it
+	// This means, once a detection with risk of collision is detected, we brake to stop and don't recover
+	// It supresses the fact that mission layer actually sees this obstacle and thus
+	// is able to plan around it.
+	if (safety_closest_points.size() > 0)
+	{
+		return true;
+	}
+
 	// TODO: This assumes scenario information, make it generic for future works.
 	for (const auto &points : safety_closest_points)
 	{
@@ -366,11 +376,7 @@ DecisionComponent::CollisionRisk(
 		}
 	}
 
-	// Only for fault injection scenario, return override value, rather than resetting it
-	// This means, once a detection with risk of collision is detected, we brake to stop and don't recover
-	// It supresses the fact that mission layer actually sees this obstacle and thus
-	// is able to plan around it.
-	return override_;
+
 
 	// Normal return
 	return false;
