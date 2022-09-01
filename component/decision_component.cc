@@ -239,11 +239,7 @@ DecisionComponent::ProcessControlCommand(const
 		control_command_override->set_speed(0);
 		control_command_override->set_throttle(0);
 		control_command_override->set_brake(control_command_brake_);
-		AWARN << "Activated safety override.";
-	}
-	else
-	{
-		AWARN << "No Override from safety override.";
+		AINFO << "Activated safety override.";
 	}
 
 	writer_control_command_->Write(control_command_override);
@@ -306,10 +302,8 @@ DecisionComponent::CollisionRisk(
 	braking_distance += ((chassis_speed_mps_ * chassis_speed_mps_) / (2 * braking_acceleration_)); // Deceleration distance
 	double time_to_stop = chassis_speed_mps_ / braking_acceleration_ + control_latency_;
 
-	AERROR << safety_closest_points.size();
 
 	// Only for fault injection scenario, return override value, rather than resetting it
-	// This means, once a detection with risk of collision is detected, we brake to stop and don't recover
 	// It supresses the fact that mission layer actually sees this obstacle and thus
 	// is able to plan around it.
 	if (safety_closest_points.size() > 0)
