@@ -7,17 +7,24 @@ namespace safety_layer
 DecisionComponent::DecisionComponent() :
 	reader_chassis_(nullptr), reader_control_command_(
 	nullptr), reader_detections_mission_(nullptr), reader_detections_safety_(
-	nullptr), writer_control_command_(nullptr), channel_name_reader_chassis_(
+	nullptr), reader_gps_(nullptr), writer_control_command_(nullptr), channel_name_reader_chassis_(
 	"/apollo/canbus/chassis"), channel_name_reader_control_command_(
 	"/apollo/control"), channel_name_reader_detections_mission_(
 	"/apollo/perception/obstacles"), channel_name_reader_detections_safety_(
-	"/apollo/safety_layer/lidar/depth_clustering/detections"), channel_name_writer_control_command_(
+	"/apollo/safety_layer/lidar/depth_clustering/detections"), channel_name_reader_gps_(
+	"/apollo/sensor/gnss/odometry"), channel_name_writer_control_command_(
 	"/apollo/safety_layer/decision/control"),
 	override_(false), chassis_speed_mps_(0), control_command_brake_(
 	100), depth_clustering_config_file_name_(
 	"/apollo/modules/safety_layer/conf/depth_clustering.json"), log_directory_name_verifiable_obstacle_detection_(
     "/apollo/data/log/safety_layer.verifiable_obstacle_detection.log.d")
 {
+	translation_vector_lidar_.x() = -0.11;
+	translation_vector_lidar_.y() = 0;
+
+	// https://gitlab.engr.illinois.edu/rtesl/synergistic_redundancy/simulation/apollo/-/blob/main/modules/calibration/data/Lincoln2017MKZ/velodyne_params/velodyne128_novatel_extrinsics.yaml
+	translation_vector_lidar_.x() += -0.980728924274446;
+	translation_vector_lidar_.y() += 0.2579201;
 }
 
 DecisionComponent::~DecisionComponent()
@@ -57,6 +64,14 @@ DecisionComponent::Init()
 	if (!reader_detections_safety_)
 	{
 		AWARN << "Failed to create safety detections reader.";
+	}
+
+	reader_gps_ = node_->CreateReader<localization::Gps>(
+	channel_name_reader_gps_);
+
+	if (!reader_gps_)
+	{
+		AWARN << "Failed to create GPS reader.";
 	}
 
 	writer_control_command_ = node_->CreateWriter<control::ControlCommand>(
@@ -110,8 +125,18 @@ DecisionComponent::Proc()
 		if (reader_detections_safety_)
 		{
 			reader_detections_safety_->Observe();
-			ProcessDetections(reader_detections_mission_->GetLatestObserved(),
-				reader_detections_safety_->GetLatestObserved());
+
+			if (reader_gps_)
+			{
+				reader_gps_->Observe();
+				ProcessDetections(reader_detections_mission_->GetLatestObserved(),
+					reader_detections_safety_->GetLatestObserved(),
+					reader_gps_->GetLatestObserved());
+			}
+			else
+			{
+				AWARN << "GPS reader missing.";
+			}
 		}
 		else
 		{
@@ -183,7 +208,8 @@ DecisionComponent::ProcessControlCommand(const
 void
 DecisionComponent::ProcessDetections(
 	const std::shared_ptr<perception::PerceptionObstacles> detections_mission,
-	const std::shared_ptr<perception::PerceptionObstacles> detections_safety)
+	const std::shared_ptr<perception::PerceptionObstacles> detections_safety,
+	const std::shared_ptr<localization::Gps> gps)
 {
 	if (!detections_mission)
 	{
@@ -207,12 +233,43 @@ DecisionComponent::ProcessDetections(
 	const auto& bounding_box_type = depth_clustering_parameter.bounding_box_type;
 
 	verifiable_obstacle_detection_->processOneFrameForApollo(frame_name,
-		convertDetectionsToPolygons(detections_mission, depth_clustering::BoundingBox::Type::Polygon),
-		convertDetectionsToPolygons(detections_safety, bounding_box_type));
+		convertMissionDetectionsToPolygons(detections_mission, gps),
+		convertSafetyDetectionsToPolygons(detections_safety, bounding_box_type));
 }
 
 std::vector<verifiable_obstacle_detection::Polygon>
-DecisionComponent::convertDetectionsToPolygons(const std::shared_ptr<perception::PerceptionObstacles> detections,
+DecisionComponent::convertMissionDetectionsToPolygons(const std::shared_ptr<perception::PerceptionObstacles> detections,
+	const std::shared_ptr<localization::Gps> gps)
+{
+	std::vector<verifiable_obstacle_detection::Polygon> polygons;
+	const auto position_ego = gps->localization().position();
+
+	AINFO << "Converting mission detections to polygons.";
+
+	for (const auto& perception_obstacle : detections->perception_obstacle())
+	{
+		verifiable_obstacle_detection::Polygon polygon;
+		std::vector<verifiable_obstacle_detection::Point2D> polygon_points;
+
+		for (const auto& polygon_point : perception_obstacle.polygon_point())
+		{
+			const auto polygon_point_x = translation_vector_lidar_.x() + polygon_point.y() - position_ego.y();
+			const auto polygon_point_y = translation_vector_lidar_.y() - (polygon_point.x() - position_ego.x());
+
+			polygon_points.push_back(verifiable_obstacle_detection::Point2D(polygon_point_x, polygon_point_y));
+		}
+
+		boost::geometry::assign_points(polygon, polygon_points);
+		boost::geometry::correct(polygon);
+
+		polygons.push_back(polygon);
+	}
+
+	return polygons;
+}
+
+std::vector<verifiable_obstacle_detection::Polygon>
+DecisionComponent::convertSafetyDetectionsToPolygons(const std::shared_ptr<perception::PerceptionObstacles> detections,
 	depth_clustering::BoundingBox::Type bounding_box_type)
 {
 	std::vector<verifiable_obstacle_detection::Polygon> polygons;
@@ -225,13 +282,13 @@ DecisionComponent::convertDetectionsToPolygons(const std::shared_ptr<perception:
 	}
 	case depth_clustering::BoundingBox::Type::Cube:
 	{
-		AINFO << "Converting cube detections to polygons.";
-		AWARN << "Polygon conversion for cube detections not implemented.";
+		AINFO << "Converting cube safety detections to polygons.";
+		AWARN << "Polygon conversion for cube safety detections not implemented.";
 		break;
 	}
 	case depth_clustering::BoundingBox::Type::Polygon:
 	{
-		AINFO << "Converting polygon detections to polygons.";
+		AINFO << "Converting polygon safety detections to polygons.";
 
 		for (const auto& perception_obstacle : detections->perception_obstacle())
 		{
@@ -253,8 +310,8 @@ DecisionComponent::convertDetectionsToPolygons(const std::shared_ptr<perception:
 	}
 	case depth_clustering::BoundingBox::Type::Flat:
 	{
-		AINFO << "Converting flat detections to polygons.";
-		AWARN << "Polygon conversion for flat detections not implemented.";
+		AINFO << "Converting flat safety detections to polygons.";
+		AWARN << "Polygon conversion for flat safety detections not implemented.";
 		break;
 	}
 	}
