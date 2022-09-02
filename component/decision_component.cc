@@ -338,7 +338,6 @@ DecisionComponent::OverrideDecision(
 		const std::pair<verifiable_obstacle_detection::Point2D, verifiable_obstacle_detection::Point2D> closest_points = safety_closest_points[i];
 		const double overlap = overlaps[i];
 
-		AINFO << overlap;
 		if (overlap >= coverage_limit_)
 		{
 			// Since the obstacle is detected by mission layer, skip this obstacle
