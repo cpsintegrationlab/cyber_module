@@ -19,9 +19,6 @@ DecisionComponent::DecisionComponent() :
 	"/apollo/modules/safety_layer/conf/depth_clustering.json"), log_directory_name_verifiable_obstacle_detection_(
     "/apollo/data/log/safety_layer.verifiable_obstacle_detection.log.d")
 {
-	translation_vector_lidar_.x() = -0.11;
-	translation_vector_lidar_.y() = 0;
-
 	// https://gitlab.engr.illinois.edu/rtesl/synergistic_redundancy/simulation/apollo/-/blob/main/modules/calibration/data/Lincoln2017MKZ/velodyne_params/velodyne128_novatel_extrinsics.yaml
 	translation_vector_lidar_.x() += -0.980728924274446;
 	translation_vector_lidar_.y() += 0.2579201;
