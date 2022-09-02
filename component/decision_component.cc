@@ -24,13 +24,9 @@ DecisionComponent::DecisionComponent() :
 	chassis_speed_mps_(0), control_command_brake_(100), control_latency_(0.01),
 	coverage_limit_(0.75)
 {
-	translation_vector_lidar_.x() = -0.11;
-	translation_vector_lidar_.y() = 0;
-
 	// https://gitlab.engr.illinois.edu/rtesl/synergistic_redundancy/simulation/apollo/-/blob/main/modules/calibration/data/Lincoln2017MKZ/velodyne_params/velodyne128_novatel_extrinsics.yaml
-	translation_vector_lidar_.x() += -0.980728924274446;
-	translation_vector_lidar_.y() += 0.2579201;
-
+	translation_vector_lidar_.x() = -0.980728924274446;
+	translation_vector_lidar_.y() = 0.2579201;
 }
 
 DecisionComponent::~DecisionComponent()
