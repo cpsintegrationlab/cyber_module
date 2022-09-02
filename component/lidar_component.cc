@@ -1,3 +1,5 @@
+#include <chrono>
+
 #include "modules/safety_layer/component/lidar_component.h"
 
 namespace apollo
@@ -9,12 +11,13 @@ LidarComponent::LidarComponent() : reader_point_cloud_(
 	"/apollo/sensor/lidar128/compensator/PointCloud2"), writer_depth_clustering_detections_channel_name_(
 	"/apollo/safety_layer/lidar/depth_clustering/detections"), depth_clustering_(nullptr), depth_clustering_config_file_name_(
 	"/apollo/modules/safety_layer/conf/depth_clustering.json"), depth_clustering_log_directory_(
-	"/apollo/data/log")
+	"/apollo/data/log"), log_(true), log_file_name_timing_("/apollo/data/log/safety_layer.lidar_timing.log.txt")
 {
 }
 
 LidarComponent::~LidarComponent()
 {
+	log_file_timing_.close();
 }
 
 bool
@@ -57,6 +60,8 @@ LidarComponent::Init()
 		AWARN << "Failed to create Depth Clustering.";
 	}
 
+	createLogFileTiming();
+
 	return true;
 }
 
@@ -77,6 +82,46 @@ LidarComponent::Proc()
 }
 
 void
+LidarComponent::createLogFileTiming()
+{
+	if (!log_)
+    {
+        return;
+    }
+
+    log_file_timing_.open(log_file_name_timing_, std::fstream::out | std::fstream::trunc);
+
+    if (log_file_timing_.is_open() && log_file_timing_.good())
+    {
+        log_file_timing_ << "Timing (us)" << std::endl;
+    }
+    else
+    {
+        AERROR << "Failed to open timing log file.";
+    }
+}
+
+void
+LidarComponent::logTiming(const int& timing)
+{
+	if (!log_)
+    {
+        return;
+    }
+
+	AINFO << "Logging timing.";
+
+    if (log_file_timing_.is_open() && log_file_timing_.good())
+    {
+        log_file_timing_ << timing << std::endl;
+    }
+    else
+    {
+        AERROR << "Invalid timing log file stream.";
+    }
+}
+
+void
 LidarComponent::ProcessPointCloud(const
 	std::shared_ptr<drivers::PointCloud> point_cloud)
 {
@@ -94,6 +139,7 @@ LidarComponent::ProcessPointCloud(const
 
 	AINFO << "Processing point cloud.";
 
+	const auto time_point_start = std::chrono::high_resolution_clock::now();
 	const std::string sequence_num = std::to_string(point_cloud->header().sequence_num());
 	const std::string frame_name = sequence_num + ".bin";
 	std::vector<Eigen::Vector3f> point_cloud_eigen;
@@ -117,6 +163,11 @@ LidarComponent::ProcessPointCloud(const
 	}
 
 	depth_clustering_->processOneFrameForApollo(frame_name, point_cloud_eigen);
+	const auto time_point_end = std::chrono::high_resolution_clock::now();
+
+	const auto duration = time_point_end - time_point_start;
+	const auto timing = std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
+	logTiming(timing);
 
 	const auto bounding_box = depth_clustering_->getBoundingBox();
 	const auto& bounding_box_type = depth_clustering_->getParameter().bounding_box_type;

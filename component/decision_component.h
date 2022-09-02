@@ -1,4 +1,5 @@
 #include <Eigen/Dense>
+#include <fstream>
 #include <memory>
 #include <vector>
 
@@ -35,6 +36,12 @@ public:
 	Proc() override;
 
 private:
+
+	void
+	createLogFileTiming();
+
+	void
+	logTiming(const int& timing);
 
 	void
 	ProcessChassis(const std::shared_ptr<canbus::Chassis> chassis);
@@ -99,6 +106,10 @@ private:
 	float control_command_brake_;
 	float control_latency_;
 	float coverage_limit_;
+
+	bool log_;
+	std::ofstream log_file_timing_;
+	const std::string log_file_name_timing_;
 };
 
 CYBER_REGISTER_COMPONENT (DecisionComponent)

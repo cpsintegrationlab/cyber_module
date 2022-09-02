@@ -1,3 +1,4 @@
+#include <fstream>
 #include <memory>
 
 #include "modules/safety_layer/lib/depth_clustering/src/depth_clustering/api/api.h"
@@ -28,6 +29,12 @@ public:
 private:
 
 	void
+	createLogFileTiming();
+
+	void
+	logTiming(const int& timing);
+
+	void
 	ProcessPointCloud(const std::shared_ptr<drivers::PointCloud> point_cloud);
 
 	void
@@ -50,6 +57,10 @@ private:
 	std::shared_ptr<depth_clustering::DepthClustering> depth_clustering_;
 	const std::string depth_clustering_config_file_name_;
 	const std::string depth_clustering_log_directory_;
+
+	bool log_;
+	std::ofstream log_file_timing_;
+	const std::string log_file_name_timing_;
 };
 
 CYBER_REGISTER_COMPONENT(LidarComponent)
