@@ -59,6 +59,10 @@ private:
 	convertDetectionsToPolygons(const std::shared_ptr<perception::PerceptionObstacles> detections,
 		depth_clustering::BoundingBox::Type bounding_box_type);
 
+	std::vector<verifiable_obstacle_detection::Polygon>
+	convertMissionDetectionsToPolygons(const std::shared_ptr<perception::PerceptionObstacles> detections);
+
+
 	double
 	DistanceAdjust(double distance);
 
@@ -86,6 +90,7 @@ private:
 	Eigen::Vector3d localization_position_;
 	Eigen::Vector3d velocity_;
 	Eigen::Vector3d accel_;
+	Eigen::Vector2d translation_vector_lidar_;
 
 	bool override_;
 

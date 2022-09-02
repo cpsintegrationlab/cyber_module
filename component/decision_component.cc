@@ -24,6 +24,13 @@ DecisionComponent::DecisionComponent() :
 	chassis_speed_mps_(0), control_command_brake_(100), control_latency_(0.01),
 	coverage_limit_(0.75)
 {
+	translation_vector_lidar_.x() = -0.11;
+	translation_vector_lidar_.y() = 0;
+
+	// https://gitlab.engr.illinois.edu/rtesl/synergistic_redundancy/simulation/apollo/-/blob/main/modules/calibration/data/Lincoln2017MKZ/velodyne_params/velodyne128_novatel_extrinsics.yaml
+	translation_vector_lidar_.x() += -0.980728924274446;
+	translation_vector_lidar_.y() += 0.2579201;
+
 }
 
 DecisionComponent::~DecisionComponent()
@@ -282,7 +289,7 @@ DecisionComponent::ProcessDetections(
 	const auto& bounding_box_type = depth_clustering_parameter.bounding_box_type;
 
 	verifiable_obstacle_detection_->processOneFrameForApollo(frame_name,
-		convertDetectionsToPolygons(detections_mission, depth_clustering::BoundingBox::Type::Polygon),
+		convertMissionDetectionsToPolygons(detections_mission),
 		convertDetectionsToPolygons(detections_safety, bounding_box_type));
 
 }
@@ -327,8 +334,6 @@ DecisionComponent::OverrideDecision(
 	// 	return true;
 	// }
 
-	AINFO << safety_closest_points.size();
-	AINFO << overlaps.size();
 	assert (safety_closest_points.size() == overlaps.size());
 
 	// TODO: This assumes scenario information, make it generic for future works.
@@ -337,6 +342,7 @@ DecisionComponent::OverrideDecision(
 		const std::pair<verifiable_obstacle_detection::Point2D, verifiable_obstacle_detection::Point2D> closest_points = safety_closest_points[i];
 		const double overlap = overlaps[i];
 
+		AINFO << overlap;
 		if (overlap >= coverage_limit_)
 		{
 			// Since the obstacle is detected by mission layer, skip this obstacle
@@ -462,5 +468,36 @@ DecisionComponent::convertDetectionsToPolygons(const std::shared_ptr<perception:
 
 	return polygons;
 }
+
+std::vector<verifiable_obstacle_detection::Polygon>
+DecisionComponent::convertMissionDetectionsToPolygons(const std::shared_ptr<perception::PerceptionObstacles> detections)
+{
+	std::vector<verifiable_obstacle_detection::Polygon> polygons;
+
+	AINFO << "Converting mission detections to polygons.";
+
+	for (const auto& perception_obstacle : detections->perception_obstacle())
+	{
+		verifiable_obstacle_detection::Polygon polygon;
+		std::vector<verifiable_obstacle_detection::Point2D> polygon_points;
+
+		for (const auto& polygon_point : perception_obstacle.polygon_point())
+		{
+			const auto polygon_point_x = translation_vector_lidar_.x() + polygon_point.y() - localization_position_.y();
+			const auto polygon_point_y = translation_vector_lidar_.y() - (polygon_point.x() - localization_position_.x());
+
+			polygon_points.push_back(verifiable_obstacle_detection::Point2D(polygon_point_x, polygon_point_y));
+		}
+
+		boost::geometry::assign_points(polygon, polygon_points);
+		boost::geometry::correct(polygon);
+
+		polygons.push_back(polygon);
+	}
+
+	return polygons;
+}
+
+
 }	/* safety_layer */
 }	/* apollo */
